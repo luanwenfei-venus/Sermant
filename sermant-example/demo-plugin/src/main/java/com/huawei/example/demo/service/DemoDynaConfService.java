@@ -46,6 +46,7 @@ public class DemoDynaConfService implements PluginService {
                 DemoLogger.println("[DemoDynaConfService]-" + event.toString());
             }
         });
+        DemoLogger.println(service.getConfig("demo/test", "sermant"));
     }
 
     @Override

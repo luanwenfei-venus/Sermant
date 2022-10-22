@@ -1,0 +1,4 @@
+# 执行-P all参数打包时使用，较agent多了示例工程
+plugins:
+  - agentcore-tests-plugin
+

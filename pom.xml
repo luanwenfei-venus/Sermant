@@ -365,6 +365,13 @@
             </modules>
         </profile>
         <profile>
+            <id>tests</id>
+            <modules>
+                <module>sermant-agentcore</module>
+                <module>sermant-agentcore-tests</module>
+            </modules>
+        </profile>
+        <profile>
             <id>backend</id>
             <modules>
                 <module>sermant-backend</module>

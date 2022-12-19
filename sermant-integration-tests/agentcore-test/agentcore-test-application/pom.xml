@@ -26,4 +26,16 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <configuration>
+                    <outputFile>${pom.basedir}/../../../${sermant.name}-${project.version}/agent/${project.artifactId}-${project.version}.jar</outputFile>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

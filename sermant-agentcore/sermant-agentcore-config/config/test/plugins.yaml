@@ -8,6 +8,7 @@ plugins:
   - monitor
   - springboot-registry
   - mq-consume-deny
+  - agentcore-test-plugin
 profiles:
   cse:
     - flowcontrol

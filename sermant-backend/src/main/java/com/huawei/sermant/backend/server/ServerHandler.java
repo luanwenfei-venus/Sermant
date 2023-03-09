@@ -24,6 +24,7 @@ import com.huawei.sermant.backend.common.util.GzipUtils;
 import com.huawei.sermant.backend.entity.HeartbeatEntity;
 import com.huawei.sermant.backend.entity.OperateType;
 import com.huawei.sermant.backend.entity.ServerInfo;
+import com.huawei.sermant.backend.entity.event.EventMessage;
 import com.huawei.sermant.backend.pojo.Message;
 
 import com.alibaba.fastjson.JSON;
@@ -56,8 +57,8 @@ public class ServerHandler extends BaseHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerHandler.class);
 
     private static final int HEARTBEAT_TOPIC_INDEX = 0;
-
-    private static final int VISIBILITY_TOPIC_INDEX = 12;
+    private static final int EVENT_TOPIC_INDEX = 1;
+    private static final int VISIBILITY_TOPIC_INDEX = 2;
     private final KafkaProducer<String, byte[]> producer;
     private KafkaConsumer<String, String> consumer;
     private boolean isHeartBeatCache;
@@ -102,6 +103,10 @@ public class ServerHandler extends BaseHandler {
                 }
                 if (Objects.equals(topic, topicMapping.getTopicOfType(VISIBILITY_TOPIC_INDEX))) {
                     handlerServiceVisibility(message);
+                }
+
+                if (Objects.equals(topic, topicMapping.getTopicOfType(EVENT_TOPIC_INDEX))) {
+                    handlerEvent(message);
                 }
                 if (!this.isHeartBeatCache) {
                     producer.send(new ProducerRecord<>(topic, message));
@@ -164,5 +169,16 @@ public class ServerHandler extends BaseHandler {
         } else {
             CollectorCache.removeServer(visibilityInfo);
         }
+    }
+
+    /**
+     * 处理事件数据
+     *
+     * @param message 消息内容
+     */
+    private void handlerEvent(byte[] message) {
+        String messageStr = new String(message, StandardCharsets.UTF_8);
+        EventMessage eventMessage = JSON.parseObject(messageStr, EventMessage.class);
+        System.out.println(eventMessage);
     }
 }

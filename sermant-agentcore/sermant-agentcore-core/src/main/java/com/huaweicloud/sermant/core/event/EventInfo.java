@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.huaweicloud.sermant.core.event.common;
+package com.huaweicloud.sermant.core.event;
 
 /**
  * 事件信息实体
@@ -26,6 +26,11 @@ public class EventInfo {
     private String name;
 
     private String description;
+
+    public EventInfo(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
 
     public String getName() {
         return name;
@@ -41,5 +46,10 @@ public class EventInfo {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    @Override
+    public String toString() {
+        return "EventInfo{" + "name='" + name + '\'' + ", description='" + description + '\'' + '}';
     }
 }

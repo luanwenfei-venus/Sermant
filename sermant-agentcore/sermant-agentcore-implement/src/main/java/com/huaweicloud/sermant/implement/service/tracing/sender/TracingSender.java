@@ -23,6 +23,7 @@ import com.huaweicloud.sermant.core.service.tracing.common.SpanEvent;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.huaweicloud.sermant.implement.service.send.netty.pojo.Message;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
@@ -41,7 +42,7 @@ import java.util.logging.Logger;
 public class TracingSender {
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
-    private static final int TRACING_DATA_TYPE = 10;
+    private static final int TRACING_DATA_TYPE = 2;
 
     private static final int MAX_SPAN_EVENT_COUNT = 512;
 
@@ -181,7 +182,7 @@ public class TracingSender {
             LOGGER.info(String.format(Locale.ROOT, "Sending tracing message traceId : [%s] , spanId : [%s] .",
                 tracingMessage.getBody().getTraceId(), tracingMessage.getBody().getSpanId()));
             String serializedMessage = JSON.toJSONString(tracingMessage, SerializerFeature.WriteMapNullValue);
-            gatewayClient.send(serializedMessage.getBytes(StandardCharsets.UTF_8), TRACING_DATA_TYPE);
+            gatewayClient.send(serializedMessage.getBytes(StandardCharsets.UTF_8), Message.ServiceData.DataType.TRACING_DATA_VALUE);
         }
     }
 }

@@ -16,13 +16,48 @@
 
 package com.huaweicloud.sermant.core.event;
 
-import com.huaweicloud.sermant.core.event.common.EventCollector;
-
 /**
- * 框架事件收集器
+ * 事件种类
  *
  * @author luanwenfei
  * @since 2023-03-04
  */
-public class FrameworkEventCollector extends EventCollector {
+public enum EventType {
+    /**
+     * 运行事件
+     */
+    OPERATION(0, "operation"),
+
+    /**
+     * 治理事件
+     */
+    GOVERNANCE(1, "governance"),
+
+    /**
+     * 日志事件
+     */
+    LOG(2, "log");
+
+    /**
+     * 事件种类的整型标识
+     */
+    private final int type;
+
+    /**
+     * 事件种类描述
+     */
+    private final String description;
+
+    EventType(int type, String description) {
+        this.type = type;
+        this.description = description;
+    }
+
+    public int getType() {
+        return type;
+    }
+
+    public String getDescription() {
+        return description;
+    }
 }

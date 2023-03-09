@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.huaweicloud.sermant.core.event;
+package com.huaweicloud.sermant.core.event.collector;
 
-import com.huaweicloud.sermant.core.event.common.Event;
-import com.huaweicloud.sermant.core.event.common.EventCollector;
+import com.huaweicloud.sermant.core.event.Event;
+import com.huaweicloud.sermant.core.event.EventCollector;
 
 /**
  * 日志事件采集器
@@ -26,14 +26,27 @@ import com.huaweicloud.sermant.core.event.common.EventCollector;
  * @since 2023-03-04
  */
 public class LogEventCollector extends EventCollector {
+    private static LogEventCollector logEventCollector;
+
+    private LogEventCollector() {
+    }
+
+    /**
+     * 获取日志事件采集器单例
+     *
+     * @return 日志事件采集器单例
+     */
+    public static synchronized LogEventCollector getInstance() {
+        if (logEventCollector == null) {
+            logEventCollector = new LogEventCollector();
+        }
+        return logEventCollector;
+    }
+
     @Override
     public boolean offerEvent(Event event) {
         /**
-         * todo 判断当前事件类型5min内是否上报过 如果上报过 就压缩 统计个数
-         */
-
-        /**
-         * todo 判断该收集器中的事件缓存是否已满，满了则主动上报后再添加
+         * todo 判断当前日志事件类型5min内是否上报过 如果上报过 就压缩 统计个数
          */
         return super.offerEvent(event);
     }

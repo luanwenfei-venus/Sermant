@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.huaweicloud.sermant.implement.service.send;
+package com.huaweicloud.sermant.implement.service.send.netty;
 
 import com.huaweicloud.sermant.implement.service.send.netty.pojo.Message;
 

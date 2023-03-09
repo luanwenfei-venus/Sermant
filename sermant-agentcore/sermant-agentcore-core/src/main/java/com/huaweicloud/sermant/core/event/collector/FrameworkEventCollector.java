@@ -14,37 +14,26 @@
  * limitations under the License.
  */
 
-package com.huaweicloud.sermant.core.event.common;
+package com.huaweicloud.sermant.core.event.collector;
+
+import com.huaweicloud.sermant.core.event.EventCollector;
 
 /**
- * 事件等级
+ * 框架事件收集器
  *
  * @author luanwenfei
  * @since 2023-03-04
  */
-public enum EventLevel {
-    /**
-     * 紧急
-     */
-    EMERGENCY(300),
+public class FrameworkEventCollector extends EventCollector {
+    private static FrameworkEventCollector frameworkEventCollector;
 
-    /**
-     * 重要
-     */
-    IMPORTANT(200),
-
-    /**
-     * 一般
-     */
-    NORMAL(100);
-
-    private final int levelThreshold;
-
-    EventLevel(int levelThreshold) {
-        this.levelThreshold = levelThreshold;
+    private FrameworkEventCollector(){
     }
 
-    public int getLevelThreshold() {
-        return levelThreshold;
+    public static synchronized FrameworkEventCollector getInstance(){
+        if(frameworkEventCollector == null){
+            frameworkEventCollector = new FrameworkEventCollector();
+        }
+        return frameworkEventCollector;
     }
 }

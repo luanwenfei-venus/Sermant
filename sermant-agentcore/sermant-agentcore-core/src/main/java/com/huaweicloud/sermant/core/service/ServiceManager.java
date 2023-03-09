@@ -25,6 +25,10 @@ package com.huaweicloud.sermant.core.service;
 import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.config.ConfigManager;
+import com.huaweicloud.sermant.core.event.Event;
+import com.huaweicloud.sermant.core.event.EventInfo;
+import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
+import com.huaweicloud.sermant.core.event.collector.FrameworkEventDefinitions;
 import com.huaweicloud.sermant.core.exception.DupServiceException;
 import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig;
 import com.huaweicloud.sermant.core.utils.SpiLoadUtils;
@@ -74,6 +78,12 @@ public class ServiceManager {
             ClassLoaderManager.getFrameworkClassLoader())) {
             if (!AGENT_CONFIG.getServiceBlackList().contains(service.getClass().getName())
                 && loadService(service, service.getClass(), BaseService.class)) {
+                FrameworkEventCollector.getInstance()
+                    .offerEvent(new Event(FrameworkEventDefinitions.SERMANT_SERVICE_START.getScope(),
+                        FrameworkEventDefinitions.SERMANT_SERVICE_START.getEventLevel(),
+                        FrameworkEventDefinitions.SERMANT_SERVICE_START.getEventType(),
+                        new EventInfo(FrameworkEventDefinitions.SERMANT_SERVICE_START.getName(),
+                            "Start " + service.getClass().getName())));
                 service.start();
             }
         }

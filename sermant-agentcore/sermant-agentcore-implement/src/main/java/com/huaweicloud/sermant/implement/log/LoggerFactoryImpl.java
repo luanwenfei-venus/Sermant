@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package com.huaweicloud.sermant.implement;
+package com.huaweicloud.sermant.implement.log;
 
 import com.huaweicloud.sermant.core.utils.StringUtils;
-
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import java.util.Locale;
 import java.util.logging.Level;

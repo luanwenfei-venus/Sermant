@@ -28,8 +28,8 @@ import com.huaweicloud.sermant.core.service.heartbeat.common.HeartbeatMessage;
 import com.huaweicloud.sermant.core.service.heartbeat.common.PluginInfo;
 import com.huaweicloud.sermant.core.service.heartbeat.config.HeartbeatConfig;
 import com.huaweicloud.sermant.core.utils.JarFileUtils;
-import com.huaweicloud.sermant.implement.service.send.NettyClient;
-import com.huaweicloud.sermant.implement.service.send.NettyClientFactory;
+import com.huaweicloud.sermant.implement.service.send.netty.NettyClient;
+import com.huaweicloud.sermant.implement.service.send.netty.NettyClientFactory;
 import com.huaweicloud.sermant.implement.service.send.netty.pojo.Message;
 
 import com.alibaba.fastjson.JSONObject;
@@ -124,8 +124,8 @@ public class HeartbeatServiceImpl implements HeartbeatService {
                 addExtInfo(entry.getKey(), pluginInfoMap.get(entry.getKey()));
             }
             heartbeatMessage.updateHeartbeatVersion();
-            nettyClient.sendData(JSONObject.toJSONString(heartbeatMessage).getBytes(CommonConstant.DEFAULT_CHARSET),
-                Message.ServiceData.DataType.SERVICE_HEARTBEAT);
+            nettyClient.sendInstantData(JSONObject.toJSONString(heartbeatMessage).getBytes(CommonConstant.DEFAULT_CHARSET),
+                Message.ServiceData.DataType.HEARTBEAT_DATA);
             sleep();
         }
     }

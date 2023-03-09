@@ -14,50 +14,37 @@
  * limitations under the License.
  */
 
-package com.huaweicloud.sermant.core.event.common;
+package com.huaweicloud.sermant.core.event;
 
 /**
- * 事件种类
+ * 事件等级
  *
  * @author luanwenfei
  * @since 2023-03-04
  */
-public enum EventType {
+public enum EventLevel {
     /**
-     * 运行事件
+     * 紧急
      */
-    OPERATION(0, "operation"),
+    EMERGENCY(300),
 
     /**
-     * 治理事件
+     * 重要
      */
-    GOVERNANCE(1, "governance"),
+    IMPORTANT(200),
 
     /**
-     * 日志事件
+     * 一般
      */
-    LOG(2, "log");
+    NORMAL(100);
 
-    /**
-     * 事件种类的整型标识
-     */
-    private final int type;
+    private final int levelThreshold;
 
-    /**
-     * 事件种类描述
-     */
-    private final String description;
-
-    EventType(int type, String description) {
-        this.type = type;
-        this.description = description;
+    EventLevel(int levelThreshold) {
+        this.levelThreshold = levelThreshold;
     }
 
-    public int getType() {
-        return type;
-    }
-
-    public String getDescription() {
-        return description;
+    public int getLevelThreshold() {
+        return levelThreshold;
     }
 }

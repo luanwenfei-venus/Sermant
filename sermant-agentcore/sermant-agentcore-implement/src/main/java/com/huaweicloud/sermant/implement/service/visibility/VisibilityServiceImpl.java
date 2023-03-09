@@ -30,6 +30,7 @@ import com.huaweicloud.sermant.core.service.visibility.config.VisibilityServiceC
 import com.huaweicloud.sermant.core.service.visibility.entity.ServerInfo;
 
 import com.alibaba.fastjson.JSONObject;
+import com.huaweicloud.sermant.implement.service.send.netty.pojo.Message;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -43,8 +44,6 @@ import java.util.logging.Logger;
  */
 public class VisibilityServiceImpl implements VisibilityService {
     private static final Logger LOGGER = LoggerFactory.getLogger();
-
-    private static final int VISIBILITY_MESSAGE = 12;
 
     private final VisibilityServiceConfig config = ConfigManager.getConfig(VisibilityServiceConfig.class);
 
@@ -66,7 +65,7 @@ public class VisibilityServiceImpl implements VisibilityService {
             fillBaseInfo(serverInfo);
             serverInfo.setOperateType(OperateType.ADD.getType());
             serverInfo.setInstanceId(BootArgsIndexer.getInstanceId());
-            client.send(JSONObject.toJSONString(serverInfo).getBytes(StandardCharsets.UTF_8), VISIBILITY_MESSAGE);
+            client.send(JSONObject.toJSONString(serverInfo).getBytes(StandardCharsets.UTF_8),0);
         }
     }
 
@@ -83,7 +82,7 @@ public class VisibilityServiceImpl implements VisibilityService {
             fillBaseInfo(serverInfo);
             serverInfo.setOperateType(OperateType.DELETE.getType());
             serverInfo.setInstanceId(BootArgsIndexer.getInstanceId());
-            client.send(JSONObject.toJSONString(serverInfo).getBytes(StandardCharsets.UTF_8), VISIBILITY_MESSAGE);
+            client.send(JSONObject.toJSONString(serverInfo).getBytes(StandardCharsets.UTF_8), Message.ServiceData.DataType.VISIBILITY_DATA_VALUE);
         }
     }
 

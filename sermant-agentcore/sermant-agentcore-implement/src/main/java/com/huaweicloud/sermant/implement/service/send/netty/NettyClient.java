@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package com.huaweicloud.sermant.implement.service.send;
+package com.huaweicloud.sermant.implement.service.send.netty;
 
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 import com.huaweicloud.sermant.core.service.visibility.api.VisibilityService;
+import com.huaweicloud.sermant.core.utils.ThreadFactoryUtils;
 import com.huaweicloud.sermant.implement.service.send.netty.pojo.Message;
 import com.huaweicloud.sermant.implement.utils.GzipUtils;
 
@@ -67,31 +68,29 @@ public class NettyClient {
 
     private static final int RECONNECT_INTERVAL_SECOND = 10;
 
-    // 消息队列用于缓存来自用户的消息
     private final BlockingQueue<Message.ServiceData> queue = new ArrayBlockingQueue<>(100);
 
-    // 客户端读写闲置时间
-    private int writeOrReadWaitTime;
+    private final int writeOrReadWaitTime;
 
-    // 服务端ip
-    private String ip;
+    private final String ip;
 
-    // 服务端端口
-    private int port;
+    private final int port;
 
-    // 发送消息间隔时间
-    private int sendInterval;
+    private final int sendInterval;
 
-    // 尝试重连服务器间隔时间
-    private int reconnectInterval;
+    private final int reconnectInterval;
 
     private Bootstrap bootstrap;
 
+    private EventLoopGroup eventLoopGroup;
+
     private Channel channel;
 
-    private ScheduledExecutorService pool;
+    private ScheduledExecutorService executorService;
 
     private final VisibilityService service = ServiceManager.getService(VisibilityService.class);
+
+    private boolean connectionAvailable = false;
 
     /**
      * 构造函数
@@ -108,10 +107,17 @@ public class NettyClient {
         bind();
     }
 
+    /**
+     * 优雅关闭Netty
+     */
+    public void stop(){
+        eventLoopGroup.shutdownGracefully();
+    }
+
     private void bind() {
-        EventLoopGroup eventExecutors = new NioEventLoopGroup();
+        eventLoopGroup = new NioEventLoopGroup(new ThreadFactoryUtils("netty-nio-event-loop-group"));
         bootstrap = new Bootstrap();
-        bootstrap.group(eventExecutors).channel(NioSocketChannel.class).option(ChannelOption.TCP_NODELAY, true)
+        bootstrap.group(eventLoopGroup).channel(NioSocketChannel.class).option(ChannelOption.TCP_NODELAY, true)
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, CONNECT_TIMEOUT).handler(new ChannelInitializer<Channel>() {
                 @Override
                 protected void initChannel(Channel newChannel) {
@@ -131,31 +137,33 @@ public class NettyClient {
      * 连接服务器
      */
     public synchronized void doConnect() {
-        LOGGER.info("do connect");
+        LOGGER.info("Netty do connect.");
         if (channel != null && channel.isActive()) {
             return;
         }
-        if (pool != null && !pool.isShutdown()) {
-            pool.shutdownNow();
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdownNow();
         }
         ChannelFuture connect = bootstrap.connect(ip, port);
 
         // 添加连接监听
-        connect.addListener((ChannelFutureListener) channelFuture -> {
+        connect.addListener((ChannelFutureListener)channelFuture -> {
+            this.connectionAvailable = channelFuture.isSuccess();
+
             // 如果连接成功，启动发送线程，循环发送消息队列中的内容
-            if (channelFuture.isSuccess()) {
+            if (this.connectionAvailable) {
                 channel = channelFuture.channel();
                 if (channel.isActive()) {
                     Sender sender = new Sender(channel, queue);
                     LOGGER.info("Successfully Connected to server");
-                    pool = Executors.newScheduledThreadPool(1);
-                    pool.scheduleAtFixedRate(sender, 0, sendInterval, TimeUnit.MILLISECONDS);
+                    executorService = Executors.newScheduledThreadPool(1,new ThreadFactoryUtils("netty-send-thread"));
+                    executorService.scheduleAtFixedRate(sender, 0, sendInterval, TimeUnit.MILLISECONDS);
                 }
                 service.reconnectHandler();
             } else {
                 // 失败则在X秒后重试连接
                 LOGGER.info(String.format(Locale.ROOT, "Failed to connect,try reconnecting after %s seconds ",
-                        reconnectInterval));
+                    reconnectInterval));
                 channelFuture.channel().eventLoop().schedule(this::doConnect, reconnectInterval, TimeUnit.SECONDS);
             }
         });
@@ -164,7 +172,7 @@ public class NettyClient {
     /**
      * 发送数据至服务端
      *
-     * @param msg      传输数据
+     * @param msg 传输数据
      * @param dataType 数据类型
      */
     public void sendData(byte[] msg, Message.ServiceData.DataType dataType) {
@@ -177,6 +185,32 @@ public class NettyClient {
             Message.ServiceData.newBuilder().setDataType(dataType).setData(ByteString.copyFrom(compressMsg)).build();
         if (!queue.offer(serviceData)) {
             LOGGER.info(String.format(Locale.ROOT, "Message queue is full, add %s failed.", serviceData.getDataType()));
+        }
+    }
+
+    /**
+     * 发送即时数据到服务端
+     *
+     * @param msg 传输数据
+     * @param dataType 数据类型
+     */
+    public boolean sendInstantData(byte[] msg, Message.ServiceData.DataType dataType) {
+        if (!this.connectionAvailable) {
+            LOGGER.warning("Netty connection is not available.");
+            return false;
+        }
+        byte[] compressMsg = GzipUtils.compress(msg);
+        Message.ServiceData serviceData =
+            Message.ServiceData.newBuilder().setDataType(dataType).setData(ByteString.copyFrom(compressMsg)).build();
+        Message.NettyMessage message = Message.NettyMessage.newBuilder()
+            .setMessageType(Message.NettyMessage.MessageType.SERVICE_DATA).addServiceData(serviceData).build();
+        if (channel == null) {
+            LOGGER.warning("Netty channel is null, send instant data failure.");
+            return false;
+        } else {
+            channel.writeAndFlush(message);
+            LOGGER.info("Sent instant data successfully by netty.");
+            return true;
         }
     }
 }

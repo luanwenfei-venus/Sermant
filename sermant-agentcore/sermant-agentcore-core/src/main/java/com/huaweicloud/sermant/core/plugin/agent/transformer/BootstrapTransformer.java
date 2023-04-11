@@ -78,22 +78,24 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
     static {
         try {
             METHODS_HASH_MAP.put("forMemberMethod", ExecuteContext.class.getDeclaredMethod("forMemberMethod",
-                Object.class, Method.class, Object[].class, Map.class, Map.class));
+                    Object.class, Method.class, Object[].class, Map.class, Map.class));
             METHODS_HASH_MAP.put("forConstructor", ExecuteContext.class.getDeclaredMethod("forConstructor", Class.class,
-                Constructor.class, Object[].class, Map.class));
+                    Constructor.class, Object[].class, Map.class));
             METHODS_HASH_MAP.put("forStaticMethod", ExecuteContext.class.getDeclaredMethod("forStaticMethod",
-                Class.class, Method.class, Object[].class, Map.class));
+                    Class.class, Method.class, Object[].class, Map.class));
             METHODS_HASH_MAP.put("onMethodEnter",
-                CommonMethodAdviser.class.getDeclaredMethod("onMethodEnter", ExecuteContext.class, ListIterator.class));
+                    CommonMethodAdviser.class.getDeclaredMethod("onMethodEnter", ExecuteContext.class,
+                            ListIterator.class));
             METHODS_HASH_MAP.put("onMethodExit",
-                CommonMethodAdviser.class.getDeclaredMethod("onMethodExit", ExecuteContext.class, ListIterator.class));
+                    CommonMethodAdviser.class.getDeclaredMethod("onMethodExit", ExecuteContext.class,
+                            ListIterator.class));
             METHODS_HASH_MAP.put("isSkip", ExecuteContext.class.getDeclaredMethod("isSkip"));
             METHODS_HASH_MAP.put("getArguments", ExecuteContext.class.getDeclaredMethod("getArguments"));
             METHODS_HASH_MAP.put("afterMethod",
-                ExecuteContext.class.getDeclaredMethod("afterMethod", Object.class, Throwable.class));
+                    ExecuteContext.class.getDeclaredMethod("afterMethod", Object.class, Throwable.class));
             METHODS_HASH_MAP.put("getResult", ExecuteContext.class.getDeclaredMethod("getResult"));
             METHODS_HASH_MAP.put("afterConstructor",
-                ExecuteContext.class.getDeclaredMethod("afterConstructor", Object.class, Map.class));
+                    ExecuteContext.class.getDeclaredMethod("afterConstructor", Object.class, Map.class));
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
@@ -108,6 +110,10 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * 拦截器全局集
      */
     private static final Map<String, List<Interceptor>> INTERCEPTOR_GLOBAL_MAP = new HashMap<>();
+
+    private static final Map<String, Class<?>> CLASS_MAP = new HashMap<>();
+
+    private static final Map<String, byte[]> ADVICE_CLS_BYTES = new HashMap<>();
 
     /**
      * 拦截定义数组
@@ -136,8 +142,8 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * 检查类定义的所有方法，并尝试增强，见{@link #enhanceMethod}
      * <p>注意，native方法，抽象方法，及父类定义的方法不会被检查
      *
-     * @param builder     构建器
-     * @param typeDesc    类定义
+     * @param builder 构建器
+     * @param typeDesc 类定义
      * @param classLoader 加载被增强类的类加载器
      * @return 构建器
      */
@@ -157,8 +163,8 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
     /**
      * 对单个方法进行增强
      *
-     * @param builder     构建器
-     * @param methodDesc  方法定义
+     * @param builder 构建器
+     * @param methodDesc 方法定义
      * @param classLoader 加载被增强类的类加载器
      * @return 构建器
      */
@@ -186,7 +192,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
     /**
      * 获取单个方法有关的拦截器列表
      *
-     * @param methodDesc  方法定义
+     * @param methodDesc 方法定义
      * @param classLoader 类加载器
      * @return 拦截器列表
      */
@@ -210,16 +216,16 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      *     4.在构建器中定义增强逻辑
      * </pre>
      *
-     * @param builder      构建器
-     * @param methodDesc   方法定义
+     * @param builder 构建器
+     * @param methodDesc 方法定义
      * @param interceptors 拦截器列表
-     * @param templateCls  增强模板类
-     * @param classLoader  被增强类的类加载器
+     * @param templateCls 增强模板类
+     * @param classLoader 被增强类的类加载器
      * @return 构建器
      * @throws InvocationTargetException 调用方法错误
-     * @throws IllegalAccessException    无法访问属性或方法，正常不会报出
-     * @throws NoSuchMethodException     无法找到方法，正常不会报出
-     * @throws NoSuchFieldException      找不到属性
+     * @throws IllegalAccessException 无法访问属性或方法，正常不会报出
+     * @throws NoSuchMethodException 无法找到方法，正常不会报出
+     * @throws NoSuchFieldException 找不到属性
      */
     private DynamicType.Builder<?> resolve(DynamicType.Builder<?> builder, MethodDescription.InDefinedShape methodDesc,
             List<Interceptor> interceptors, Class<?> templateCls, ClassLoader classLoader)
@@ -230,12 +236,17 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
             globalInterceptors = new ArrayList<>(interceptors);
             INTERCEPTOR_GLOBAL_MAP.put(adviceClassName, globalInterceptors);
             final byte[] adviceClsBytes = createAdviceClass(templateCls, adviceClassName);
+            ADVICE_CLS_BYTES.put(adviceClassName, adviceClsBytes);
             final Class<?> adviceCls = defineAdviceClass(adviceClassName, classLoader, adviceClsBytes);
+            CLASS_MAP.put(adviceClassName, adviceCls);
             prepareAdviceClass(adviceCls, interceptors);
             return visitAdvice(builder, methodDesc, adviceCls, adviceClsBytes);
         } else {
-            globalInterceptors.addAll(interceptors);
-            return builder;
+            globalInterceptors = new ArrayList<>(interceptors);
+            INTERCEPTOR_GLOBAL_MAP.put(adviceClassName, globalInterceptors);
+            prepareAdviceClass(CLASS_MAP.get(adviceClassName), interceptors);
+            return visitAdvice(builder, methodDesc, CLASS_MAP.get(adviceClassName),
+                    ADVICE_CLS_BYTES.get(adviceClassName));
         }
     }
 
@@ -244,7 +255,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * <p>由模板类全限定名拼接被增强方法元信息的hash值所得，见于{@link MethodKeyCreator#getMethodDescKey}
      *
      * @param templateCls 增强模板类
-     * @param methodDesc  方法定义
+     * @param methodDesc 方法定义
      * @return 增强Adviser全限定名
      */
     private String getAdviceClassName(Class<?> templateCls, MethodDescription.InDefinedShape methodDesc) {
@@ -255,7 +266,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
     /**
      * 使用byte-buddy依照增强模板类动态生成增强Adviser
      *
-     * @param templateCls   增强模板类
+     * @param templateCls 增强模板类
      * @param adviceClsName 增强Adviser全限定名
      * @return 增强Adviser的字节码
      */
@@ -263,7 +274,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
         return new ByteBuddy().redefine(templateCls)
                 .name(adviceClsName)
                 .defineField(INTERCEPTORS_FIELD_NAME, List.class, Visibility.PUBLIC, Ownership.STATIC)
-                .defineField(METHODS_MAP_NAME,Map.class,Visibility.PUBLIC, Ownership.STATIC)
+                .defineField(METHODS_MAP_NAME, Map.class, Visibility.PUBLIC, Ownership.STATIC)
                 .make()
                 .getBytes();
     }
@@ -272,12 +283,12 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * 通过字节码，使用ClassLoader定义增强Adviser
      *
      * @param adviceClassName 增强Advice的全限定名
-     * @param classLoader    被增强类的ClassLoader
+     * @param classLoader 被增强类的ClassLoader
      * @param adviceClsBytes 增强Adviser的字节码
      * @return 增强Adviser的Class
      * @throws InvocationTargetException 调用defineClass方法错误
-     * @throws IllegalAccessException    无法访问defineClass方法，正常不会报出
-     * @throws NoSuchMethodException     无法找到defineClass方法，正常不会报出
+     * @throws IllegalAccessException 无法访问defineClass方法，正常不会报出
+     * @throws NoSuchMethodException 无法找到defineClass方法，正常不会报出
      */
     private Class<?> defineAdviceClass(String adviceClassName, ClassLoader classLoader, byte[] adviceClsBytes)
             throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
@@ -287,9 +298,9 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
     /**
      * 初始化增强Adviser，为其添加方法拦截器集合
      *
-     * @param adviceCls    增强Adviser的Class
+     * @param adviceCls 增强Adviser的Class
      * @param interceptors 拦截器集合
-     * @throws NoSuchFieldException   找不到属性
+     * @throws NoSuchFieldException 找不到属性
      * @throws IllegalAccessException 无法访问属性
      */
     private void prepareAdviceClass(Class<?> adviceCls, List<Interceptor> interceptors)
@@ -301,9 +312,9 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
     /**
      * 在构建器中定义增强逻辑
      *
-     * @param builder        构建器
-     * @param methodDesc     方法定义
-     * @param adviceCls      增强Adviser的Class
+     * @param builder 构建器
+     * @param methodDesc 方法定义
+     * @param adviceCls 增强Adviser的Class
      * @param adviceClsBytes 增强Adviser的字节码
      * @return 构建器
      */

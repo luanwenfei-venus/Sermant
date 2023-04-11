@@ -98,6 +98,7 @@ public class AdviceTransformer implements AgentBuilder.Transformer {
      */
     private DynamicType.Builder<?> extendsFromSuperTypes(DynamicType.Builder<?> builder, TypeDescription typeDesc,
             int verifiedKey) {
+        // todo 此处没有小于0的情况，可进行修改，该方法目前没有用到
         if (superTypeDeclarers == null || superTypeDeclarers.length <= 0) {
             return builder;
         }

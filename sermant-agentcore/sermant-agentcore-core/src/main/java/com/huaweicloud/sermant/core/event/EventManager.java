@@ -22,6 +22,7 @@ import com.huaweicloud.sermant.core.config.ConfigManager;
 import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
 import com.huaweicloud.sermant.core.event.collector.LogEventCollector;
 import com.huaweicloud.sermant.core.event.config.EventConfig;
+import com.huaweicloud.sermant.core.service.ServiceConfig;
 import com.huaweicloud.sermant.core.utils.ThreadFactoryUtils;
 
 import java.util.ArrayList;

@@ -56,6 +56,10 @@ public class AgentPremain {
     private AgentPremain() {
     }
 
+    public static void agentmain(String agentArgs, Instrumentation inst) {
+        premain(agentArgs, inst);
+    }
+
     /**
      * premain
      *

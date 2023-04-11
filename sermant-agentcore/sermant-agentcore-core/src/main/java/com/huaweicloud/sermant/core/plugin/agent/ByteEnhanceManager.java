@@ -17,8 +17,14 @@
 package com.huaweicloud.sermant.core.plugin.agent;
 
 import com.huaweicloud.sermant.core.plugin.agent.collector.PluginCollectorManager;
+import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDescription;
+
+import net.bytebuddy.agent.builder.AgentBuilder.RedefinitionStrategy;
+import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 
 import java.lang.instrument.Instrumentation;
+import java.lang.instrument.UnmodifiableClassException;
+import java.util.List;
 
 /**
  * 字节码增强管理器
@@ -28,6 +34,12 @@ import java.lang.instrument.Instrumentation;
  * @since 2022-01-22
  */
 public class ByteEnhanceManager {
+    private static ResettableClassFileTransformer resettableClassFileTransformer;
+
+    private static Instrumentation instrumentation;
+
+    private static List<PluginDescription> pluginDescriptions;
+
     private ByteEnhanceManager() {
     }
 
@@ -37,6 +49,31 @@ public class ByteEnhanceManager {
      * @param instrumentation Instrumentation对象
      */
     public static void enhance(Instrumentation instrumentation) {
-        BufferedAgentBuilder.build().addPlugins(PluginCollectorManager.getPlugins()).install(instrumentation);
+        ByteEnhanceManager.instrumentation = instrumentation;
+        pluginDescriptions = PluginCollectorManager.getPlugins();
+        resettableClassFileTransformer =
+                BufferedAgentBuilder.build().addPlugins(pluginDescriptions).install(instrumentation);
+    }
+
+    public static void unEnhance(String className) {
+        System.out.println(
+                resettableClassFileTransformer.reset(instrumentation, RedefinitionStrategy.RETRANSFORMATION));
+        try {
+            for (Class clazz : instrumentation.getAllLoadedClasses()) {
+                if (className.equals(clazz.getCanonicalName())) {
+                    System.out.println(clazz.getCanonicalName());
+                    ByteEnhanceManager.instrumentation.retransformClasses(clazz);
+                }
+            }
+        } catch (UnmodifiableClassException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void reEnhance() {
+        BufferedAgentBuilder agentBuilder =
+                BufferedAgentBuilder.build().addPlugins(pluginDescriptions);
+        resettableClassFileTransformer =
+                agentBuilder.install(instrumentation);
     }
 }

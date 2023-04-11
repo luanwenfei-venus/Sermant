@@ -169,15 +169,15 @@ public class PluginCollectorManager {
             @Override
             public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder, TypeDescription typeDescription,
                 ClassLoader classLoader, JavaModule module) {
-                if (classLoader == null) {
+//                if (classLoader == null) {
                     return new BootstrapTransformer(
                         declarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader())
                     ).transform(builder, typeDescription, null, module);
-                } else {
-                    return new AdviceTransformer(
-                        declarer.getInterceptDeclarers(classLoader), declarer.getSuperTypeDeclarers()
-                    ).transform(builder, typeDescription, classLoader, module);
-                }
+//                } else {
+//                    return new AdviceTransformer(
+//                        declarer.getInterceptDeclarers(classLoader), declarer.getSuperTypeDeclarers()
+//                    ).transform(builder, typeDescription, classLoader, module);
+//                }
             }
         };
     }
@@ -309,7 +309,7 @@ public class PluginCollectorManager {
         Map<String, List<PluginDeclarer>> nameCombinedMap) {
         final List<PluginDeclarer> pluginDeclarers = nameCombinedMap.remove(typeDescription.getActualName());
         final List<InterceptDeclarer> interceptDeclarers = new ArrayList<>();
-        if (classLoader == null) {
+//        if (classLoader == null) {
             for (PluginDeclarer pluginDeclarer : pluginDeclarers) {
                 interceptDeclarers.addAll(
                     Arrays.asList(pluginDeclarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader())));
@@ -317,16 +317,16 @@ public class PluginCollectorManager {
             return new BootstrapTransformer(
                 interceptDeclarers.toArray(new InterceptDeclarer[0])
             ).transform(builder, typeDescription, null, module);
-        } else {
-            final List<SuperTypeDeclarer> superTypeDeclarers = new ArrayList<>();
-            for (PluginDeclarer pluginDeclarer : pluginDeclarers) {
-                interceptDeclarers.addAll(Arrays.asList(pluginDeclarer.getInterceptDeclarers(classLoader)));
-                superTypeDeclarers.addAll(Arrays.asList(pluginDeclarer.getSuperTypeDeclarers()));
-            }
-            return new AdviceTransformer(
-                interceptDeclarers.toArray(new InterceptDeclarer[0]),
-                superTypeDeclarers.toArray(new SuperTypeDeclarer[0])
-            ).transform(builder, typeDescription, classLoader, module);
-        }
+//        } else {
+//            final List<SuperTypeDeclarer> superTypeDeclarers = new ArrayList<>();
+//            for (PluginDeclarer pluginDeclarer : pluginDeclarers) {
+//                interceptDeclarers.addAll(Arrays.asList(pluginDeclarer.getInterceptDeclarers(classLoader)));
+//                superTypeDeclarers.addAll(Arrays.asList(pluginDeclarer.getSuperTypeDeclarers()));
+//            }
+//            return new AdviceTransformer(
+//                interceptDeclarers.toArray(new InterceptDeclarer[0]),
+//                superTypeDeclarers.toArray(new SuperTypeDeclarer[0])
+//            ).transform(builder, typeDescription, classLoader, module);
+//        }
     }
 }

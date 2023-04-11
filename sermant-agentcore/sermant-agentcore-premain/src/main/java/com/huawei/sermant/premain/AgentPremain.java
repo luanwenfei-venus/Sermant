@@ -42,6 +42,7 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 import javax.naming.InsufficientResourcesException;
+
 /**
  * Agent Premain方法
  *
@@ -71,6 +72,10 @@ public class AgentPremain {
             }
             executeFlag = true;
 
+            // 添加引导库
+            LOGGER.info("Loading bootstrap library... ");
+            loadBootstrapLib(instrumentation);
+
             // 添加核心库
             LOGGER.info("Loading core library... ");
             loadCoreLib(instrumentation);
@@ -90,7 +95,7 @@ public class AgentPremain {
             LOGGER.severe("Loading sermant agent failed. ");
         } catch (Exception e) {
             LOGGER.severe(
-                String.format(Locale.ROOT, "Loading sermant agent failed, %s. ", e));
+                    String.format(Locale.ROOT, "Loading sermant agent failed, %s. ", e));
         }
     }
 
@@ -105,7 +110,7 @@ public class AgentPremain {
                 return name.endsWith(".jar");
             }
         });
-        if (jars == null || jars.length <= 0) {
+        if (jars == null || jars.length == 0) {
             throw new RuntimeException("core directory is empty");
         }
         for (File jar : jars) {
@@ -113,6 +118,37 @@ public class AgentPremain {
             try {
                 jarFile = new JarFile(jar);
                 instrumentation.appendToSystemClassLoaderSearch(jarFile);
+            } finally {
+                if (jarFile != null) {
+                    try {
+                        jarFile.close();
+                    } catch (IOException ignored) {
+                        LOGGER.severe(ignored.getMessage());
+                    }
+                }
+            }
+        }
+    }
+
+    private static void loadBootstrapLib(Instrumentation instrumentation) throws IOException {
+        final File bootstrapDir = new File(PathDeclarer.getBootstrapPath());
+        if (!bootstrapDir.exists() || !bootstrapDir.isDirectory()) {
+            throw new RuntimeException("Bootstrap directory is not exist or is not directory.");
+        }
+        final File[] jars = bootstrapDir.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String name) {
+                return name.endsWith(".jar");
+            }
+        });
+        if (jars == null || jars.length == 0) {
+            throw new RuntimeException("Bootstrap directory is empty");
+        }
+        for (File jar : jars) {
+            JarFile jarFile = null;
+            try {
+                jarFile = new JarFile(jar);
+                instrumentation.appendToBootstrapClassLoaderSearch(jarFile);
             } finally {
                 if (jarFile != null) {
                     try {

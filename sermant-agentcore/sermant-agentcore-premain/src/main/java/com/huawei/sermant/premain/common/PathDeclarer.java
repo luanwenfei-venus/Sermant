@@ -50,6 +50,15 @@ public class PathDeclarer {
     }
 
     /**
+     * 获取引导包目录
+     *
+     * @return 引导包目录
+     */
+    public static String getBootstrapPath() {
+        return getAgentPath() + File.separatorChar + "bootstrap";
+    }
+
+    /**
      * 获取核心功能实现包目录
      *
      * @return 核心功能实现包目录

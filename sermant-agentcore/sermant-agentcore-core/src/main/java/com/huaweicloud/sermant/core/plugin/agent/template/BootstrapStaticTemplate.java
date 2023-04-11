@@ -57,6 +57,7 @@ public class BootstrapStaticTemplate {
             @Advice.Local(value = "_INTERCEPTOR_ITR_$SERMANT_LOCAL") ListIterator<?> interceptorItr,
             @Advice.Local(value = "_EXECUTE_CONTEXT_$SERMANT_LOCAL") Object context,
             @Advice.Local(value = "_IS_SKIP_$SERMANT_LOCAL") Boolean isSkip) throws Throwable {
+        System.out.println("Execute before:" + Thread.currentThread().getContextClassLoader());
         final String adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template.BootstrapStaticTemplate_"
                 + Integer.toHexString(methodKey.hashCode());
         interceptorItr = Adviser.getInterceptorListMap().get(adviceClsName).listIterator();
@@ -83,8 +84,10 @@ public class BootstrapStaticTemplate {
             @Advice.Local(value = "_INTERCEPTOR_ITR_$SERMANT_LOCAL") ListIterator<?> interceptorItr,
             @Advice.Local(value = "_EXECUTE_CONTEXT_$SERMANT_LOCAL") Object context,
             @Advice.Local(value = "_IS_SKIP_$SERMANT_LOCAL") Boolean isSkip) throws Throwable {
+        System.out.println("Execute before:" + Thread.currentThread().getContextClassLoader());
         context = isSkip ? context : ((ExecuteContext) context).afterMethod(result, throwable);
         context = Adviser.onMethodExit(context, interceptorItr);
         result = ((ExecuteContext) context).getResult();
+        System.out.println("Execute after:" + Thread.currentThread().getContextClassLoader());
     }
 }

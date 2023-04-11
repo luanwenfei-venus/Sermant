@@ -59,6 +59,7 @@ public class BootstrapMemberTemplate {
             @Advice.Local(value = "_IS_SKIP_$SERMANT_LOCAL") Boolean isSkip
 
     ) throws Throwable {
+        System.out.println("Execute before:" + Thread.currentThread().getContextClassLoader());
         final String adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template.BootstrapMemberTemplate_"
                 + Integer.toHexString(methodKey.hashCode());
         interceptorItr = Adviser.getInterceptorListMap().get(adviceClsName).listIterator();
@@ -66,6 +67,7 @@ public class BootstrapMemberTemplate {
         context = Adviser.onMethodEnter(context, interceptorItr);
         arguments = ((ExecuteContext) context).getArguments();
         isSkip = ((ExecuteContext) context).isSkip();
+        System.out.println("Execute after:" + Thread.currentThread().getContextClassLoader());
         return isSkip;
     }
 
@@ -88,5 +90,6 @@ public class BootstrapMemberTemplate {
         context = isSkip ? context : ((ExecuteContext) context).afterMethod(result, throwable);
         context = Adviser.onMethodExit(context, interceptorItr);
         result = ((ExecuteContext) context).getResult();
+        System.out.println("Execute after:" + Thread.currentThread().getContextClassLoader());
     }
 }

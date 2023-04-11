@@ -1,0 +1,3 @@
+# 默认编译场景使用，不含示例工程
+plugins:
+  - agentcore-test-plugin

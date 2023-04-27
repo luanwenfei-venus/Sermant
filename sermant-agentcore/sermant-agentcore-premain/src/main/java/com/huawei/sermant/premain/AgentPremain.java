@@ -93,6 +93,7 @@ public class AgentPremain {
                  | NotOwnerException | JarException | ConcurrentModificationException | BindException
                  | InsufficientResourcesException | SQLException e) {
             LOGGER.severe("Loading sermant agent failed. ");
+            e.printStackTrace();
         } catch (Exception e) {
             LOGGER.severe(
                     String.format(Locale.ROOT, "Loading sermant agent failed, %s. ", e));

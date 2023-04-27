@@ -16,6 +16,7 @@
 
 package com.huaweicloud.sermant.core.plugin.agent.collector;
 
+import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.config.ConfigManager;
 import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.AbstractPluginDescription;
@@ -28,6 +29,7 @@ import com.huaweicloud.sermant.core.plugin.agent.transformer.BootstrapTransforme
 
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.utility.JavaModule;
 
 import java.util.ArrayList;
@@ -37,6 +39,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * 插件收集器管理器，用于从所有插件收集器中获取插件描述器
@@ -46,6 +50,8 @@ import java.util.ServiceLoader;
  * @since 2022-01-26
  */
 public class PluginCollectorManager {
+    private static final Logger LOGGER = LoggerFactory.getLogger();
+
     /**
      * 通过spi检索所有配置的插件收集器
      */
@@ -116,7 +122,7 @@ public class PluginCollectorManager {
      * @return 合并所得的插件描述器列表
      */
     private static List<PluginDescription> combinePlugins(List<? extends PluginDeclarer> declarers,
-            AgentConfig.CombineStrategy strategy) {
+        AgentConfig.CombineStrategy strategy) {
         final List<PluginDescription> plugins = new ArrayList<>();
         if (!declarers.isEmpty()) {
             switch (strategy) {
@@ -130,8 +136,8 @@ public class PluginCollectorManager {
                     plugins.add(combineAllDeclarers(declarers));
                     break;
                 default:
-                    throw new IllegalArgumentException(String.format(Locale.ROOT,
-                            "Unknown combine strategy %s. ", strategy));
+                    throw new IllegalArgumentException(
+                        String.format(Locale.ROOT, "Unknown combine strategy %s. ", strategy));
             }
         }
         return plugins;
@@ -161,15 +167,15 @@ public class PluginCollectorManager {
         return new AbstractPluginDescription() {
             @Override
             public boolean matches(TypeDescription target) {
-                return declarer.getClassMatcher().matches(target);
+                return matchTarget(declarer.getClassMatcher(),target);
             }
 
             @Override
             public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder, TypeDescription typeDescription,
-                    ClassLoader classLoader, JavaModule module) {
-                return new BootstrapTransformer(
-                        declarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader())
-                ).transform(builder, typeDescription, classLoader, module);
+                ClassLoader classLoader, JavaModule module) {
+                // todo ClassLoader.getSystemClassLoader() 已经没有作用
+                return new BootstrapTransformer(declarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader()))
+                    .transform(builder, typeDescription, classLoader, module);
             }
         };
     }
@@ -186,12 +192,9 @@ public class PluginCollectorManager {
         for (PluginDeclarer pluginDeclarer : declarers) {
             final ClassMatcher classMatcher = pluginDeclarer.getClassMatcher();
             if (classMatcher instanceof ClassTypeMatcher) {
-                for (String typeName : ((ClassTypeMatcher) classMatcher).getTypeNames()) {
-                    List<PluginDeclarer> nameCombinedList = nameCombinedMap.get(typeName);
-                    if (nameCombinedList == null) {
-                        nameCombinedList = new ArrayList<>();
-                        nameCombinedMap.put(typeName, nameCombinedList);
-                    }
+                for (String typeName : ((ClassTypeMatcher)classMatcher).getTypeNames()) {
+                    List<PluginDeclarer> nameCombinedList = nameCombinedMap.computeIfAbsent(typeName,
+                            k -> new ArrayList<>());
                     nameCombinedList.add(pluginDeclarer);
                 }
             } else {
@@ -219,7 +222,7 @@ public class PluginCollectorManager {
 
             @Override
             public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder, TypeDescription typeDescription,
-                    ClassLoader classLoader, JavaModule module) {
+                ClassLoader classLoader, JavaModule module) {
                 return nameCombinedTransform(builder, typeDescription, classLoader, module, nameCombinedMap);
             }
         };
@@ -237,12 +240,9 @@ public class PluginCollectorManager {
         for (PluginDeclarer pluginDeclarer : declarers) {
             final ClassMatcher classMatcher = pluginDeclarer.getClassMatcher();
             if (classMatcher instanceof ClassTypeMatcher) {
-                for (String typeName : ((ClassTypeMatcher) classMatcher).getTypeNames()) {
-                    List<PluginDeclarer> nameCombinedList = nameCombinedMap.get(typeName);
-                    if (nameCombinedList == null) {
-                        nameCombinedList = new ArrayList<>();
-                        nameCombinedMap.put(typeName, nameCombinedList);
-                    }
+                for (String typeName : ((ClassTypeMatcher)classMatcher).getTypeNames()) {
+                    List<PluginDeclarer> nameCombinedList =
+                        nameCombinedMap.computeIfAbsent(typeName, k -> new ArrayList<>());
                     nameCombinedList.add(pluginDeclarer);
                 }
             } else {
@@ -260,11 +260,11 @@ public class PluginCollectorManager {
      * @return 插件描述器
      */
     private static PluginDescription createAllCombinedDescription(Map<String, List<PluginDeclarer>> nameCombinedMap,
-            List<PluginDeclarer> combinedList) {
+        List<PluginDeclarer> combinedList) {
         return new AbstractPluginDescription() {
             @Override
             public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder, TypeDescription typeDescription,
-                    ClassLoader classLoader, JavaModule module) {
+                ClassLoader classLoader, JavaModule module) {
                 return nameCombinedTransform(builder, typeDescription, classLoader, module, nameCombinedMap);
             }
 
@@ -272,12 +272,9 @@ public class PluginCollectorManager {
             public boolean matches(TypeDescription target) {
                 final String typeName = target.getActualName();
                 for (PluginDeclarer pluginDeclarer : combinedList) {
-                    if (pluginDeclarer.getClassMatcher().matches(target)) {
-                        List<PluginDeclarer> declarers = nameCombinedMap.get(typeName);
-                        if (declarers == null) {
-                            declarers = new ArrayList<>();
-                            nameCombinedMap.put(typeName, declarers);
-                        }
+                    if (matchTarget(pluginDeclarer.getClassMatcher(), target)) {
+                        List<PluginDeclarer> declarers =
+                            nameCombinedMap.computeIfAbsent(typeName, k -> new ArrayList<>());
                         declarers.add(pluginDeclarer);
                     }
                 }
@@ -297,16 +294,25 @@ public class PluginCollectorManager {
      * @return 构建器
      */
     private static DynamicType.Builder<?> nameCombinedTransform(DynamicType.Builder<?> builder,
-            TypeDescription typeDescription, ClassLoader classLoader, JavaModule module,
-            Map<String, List<PluginDeclarer>> nameCombinedMap) {
+        TypeDescription typeDescription, ClassLoader classLoader, JavaModule module,
+        Map<String, List<PluginDeclarer>> nameCombinedMap) {
         final List<PluginDeclarer> pluginDeclarers = nameCombinedMap.remove(typeDescription.getActualName());
         final List<InterceptDeclarer> interceptDeclarers = new ArrayList<>();
         for (PluginDeclarer pluginDeclarer : pluginDeclarers) {
-            interceptDeclarers.addAll(
-                    Arrays.asList(pluginDeclarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader())));
+            // todo 这里的system classLoader已经没有用了
+            interceptDeclarers
+                .addAll(Arrays.asList(pluginDeclarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader())));
         }
-        return new BootstrapTransformer(
-                interceptDeclarers.toArray(new InterceptDeclarer[0])
-        ).transform(builder, typeDescription, classLoader, module);
+        return new BootstrapTransformer(interceptDeclarers.toArray(new InterceptDeclarer[0])).transform(builder,
+            typeDescription, classLoader, module);
+    }
+
+    private static boolean matchTarget(ElementMatcher<TypeDescription> matcher, TypeDescription target) {
+        try {
+            return matcher.matches(target);
+        } catch (Exception exception) {
+            LOGGER.log(Level.WARNING, "Exception occur when math target: " + target.getActualName(), exception);
+            return false;
+        }
     }
 }

@@ -23,10 +23,9 @@ import com.huaweicloud.sermant.core.config.ConfigManager;
 import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
 import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDescription;
-import com.huaweicloud.sermant.core.plugin.classloader.PluginClassLoader;
+import com.huaweicloud.sermant.core.plugin.classloader.ServiceClassLoader;
 import com.huaweicloud.sermant.core.utils.FileUtils;
 
-import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.AgentBuilder.Default;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
@@ -124,7 +123,7 @@ public class BufferedAgentBuilder {
 
     /**
      * 设置扫描的过滤规则
-     * <p>注意，数组类型，8中基础类型，以及{@link PluginClassLoader},{@link FrameworkClassLoader}加载的类默认不增强，直接被过滤
+     * <p>注意，数组类型，8中基础类型，以及{@link ServiceClassLoader},{@link FrameworkClassLoader}加载的类默认不增强，直接被过滤
      * <p>其他类若符合配置中{@link AgentConfig#getIgnoredPrefixes}指定的前缀之一，则被过滤
      *
      * @return BufferedAgentBuilder本身
@@ -316,7 +315,7 @@ public class BufferedAgentBuilder {
             if (classLoader instanceof FrameworkClassLoader) {
                 return true;
             }
-            if (classLoader instanceof PluginClassLoader) {
+            if (classLoader instanceof ServiceClassLoader) {
                 return !serviceInjectList.contains(typeDesc.getTypeName());
             }
             return false;

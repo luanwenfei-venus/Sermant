@@ -16,6 +16,7 @@
 
 package com.huaweicloud.sermant.core.plugin.agent.transformer;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.plugin.agent.adviser.Adviser;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.InterceptDeclarer;
@@ -87,14 +88,14 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
 
     @Override
     public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder, TypeDescription typeDesc,
-            ClassLoader classLoader, JavaModule module) {
+        ClassLoader classLoader, JavaModule module) {
         if (interceptDeclarers == null || interceptDeclarers.length == 0) {
             return builder;
         }
 
         // 引导类加载器的时候为null
         if (classLoader == null) {
-            return enhanceMethods(builder, typeDesc, ClassLoader.getSystemClassLoader());
+            return enhanceMethods(builder, typeDesc, ClassLoaderManager.getPluginClassLoader());
         }
         return enhanceMethods(builder, typeDesc, classLoader);
     }
@@ -109,7 +110,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * @return 构建器
      */
     private DynamicType.Builder<?> enhanceMethods(DynamicType.Builder<?> builder, TypeDescription typeDesc,
-            ClassLoader classLoader) {
+        ClassLoader classLoader) {
         final MethodList<MethodDescription.InDefinedShape> declaredMethods = typeDesc.getDeclaredMethods();
         DynamicType.Builder<?> newBuilder = builder;
         for (MethodDescription.InDefinedShape methodDesc : declaredMethods) {
@@ -130,7 +131,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * @return 构建器
      */
     private DynamicType.Builder<?> enhanceMethod(DynamicType.Builder<?> builder,
-            MethodDescription.InDefinedShape methodDesc, ClassLoader classLoader) {
+        MethodDescription.InDefinedShape methodDesc, ClassLoader classLoader) {
         final List<Interceptor> interceptors = getInterceptors(methodDesc, classLoader);
         if (interceptors.isEmpty()) {
             return builder;
@@ -145,7 +146,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
             }
         } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             LOGGER.warning(String.format(Locale.ROOT, "Enhance [%s] failed for [%s], caused by [%s]. ",
-                    MethodKeyCreator.getMethodDescKey(methodDesc), e.getClass().getName(), e.getMessage()));
+                MethodKeyCreator.getMethodDescKey(methodDesc), e.getClass().getName(), e.getMessage()));
         }
         return builder;
     }
@@ -189,8 +190,8 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * @throws NoSuchFieldException 找不到属性
      */
     private DynamicType.Builder<?> resolve(DynamicType.Builder<?> builder, MethodDescription.InDefinedShape methodDesc,
-            List<Interceptor> interceptors, Class<?> templateCls, ClassLoader classLoader)
-            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException, NoSuchFieldException {
+        List<Interceptor> interceptors, Class<?> templateCls, ClassLoader classLoader)
+        throws InvocationTargetException, IllegalAccessException, NoSuchMethodException, NoSuchFieldException {
         final String adviceClassName = getAdviceClassName(templateCls, methodDesc);
         List<Interceptor> globalInterceptors = INTERCEPTOR_GLOBAL_MAP.get(adviceClassName);
         if (globalInterceptors == null) {
@@ -226,9 +227,8 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * @throws NoSuchFieldException 找不到属性
      */
     private DynamicType.Builder<?> resolveTest(DynamicType.Builder<?> builder,
-            MethodDescription.InDefinedShape methodDesc,
-            List<Interceptor> interceptors, Class<?> templateCls)
-            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException, NoSuchFieldException {
+        MethodDescription.InDefinedShape methodDesc, List<Interceptor> interceptors, Class<?> templateCls)
+        throws InvocationTargetException, IllegalAccessException, NoSuchMethodException, NoSuchFieldException {
         final String adviceClassName = getAdviceClassName(templateCls, methodDesc);
         List<Interceptor> globalInterceptors = Adviser.getInterceptorListMap().get(adviceClassName);
         if (globalInterceptors == null) {
@@ -250,7 +250,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      */
     private String getAdviceClassName(Class<?> templateCls, MethodDescription.InDefinedShape methodDesc) {
         return templateCls.getName() + "_"
-                + Integer.toHexString(MethodKeyCreator.getMethodDescKey(methodDesc).hashCode());
+            + Integer.toHexString(MethodKeyCreator.getMethodDescKey(methodDesc).hashCode());
     }
 
     /**
@@ -261,11 +261,8 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * @return 增强Adviser的字节码
      */
     private byte[] createAdviceClass(Class<?> templateCls, String adviceClsName) {
-        return new ByteBuddy().redefine(templateCls)
-                .name(adviceClsName)
-                .defineField(INTERCEPTORS_FIELD_NAME, List.class, Visibility.PUBLIC, Ownership.STATIC)
-                .make()
-                .getBytes();
+        return new ByteBuddy().redefine(templateCls).name(adviceClsName)
+            .defineField(INTERCEPTORS_FIELD_NAME, List.class, Visibility.PUBLIC, Ownership.STATIC).make().getBytes();
     }
 
     /**
@@ -280,7 +277,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * @throws NoSuchMethodException 无法找到defineClass方法，正常不会报出
      */
     private Class<?> defineAdviceClass(String adviceClassName, ClassLoader classLoader, byte[] adviceClsBytes)
-            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
+        throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
         return ClassLoaderUtils.defineClass(adviceClassName, classLoader, adviceClsBytes);
     }
 
@@ -293,7 +290,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * @throws IllegalAccessException 无法访问属性
      */
     private void prepareAdviceClass(Class<?> adviceCls, List<Interceptor> interceptors)
-            throws NoSuchFieldException, IllegalAccessException {
+        throws NoSuchFieldException, IllegalAccessException {
         adviceCls.getDeclaredField(INTERCEPTORS_FIELD_NAME).set(null, interceptors);
     }
 
@@ -307,7 +304,7 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
      * @return 构建器
      */
     private DynamicType.Builder<?> visitAdvice(DynamicType.Builder<?> builder,
-            MethodDescription.InDefinedShape methodDesc, Class<?> adviceCls, final byte[] adviceClsBytes) {
+        MethodDescription.InDefinedShape methodDesc, Class<?> adviceCls, final byte[] adviceClsBytes) {
         return builder.visit(Advice.to(adviceCls, new ClassFileLocator() {
             @Override
             public void close() {

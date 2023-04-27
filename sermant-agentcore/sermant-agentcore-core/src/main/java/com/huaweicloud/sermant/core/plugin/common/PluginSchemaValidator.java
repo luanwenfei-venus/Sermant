@@ -41,6 +41,10 @@ public class PluginSchemaValidator {
     private PluginSchemaValidator() {
     }
 
+    public static void shutdown(){
+        PLUGIN_VERSION_MAP.clear();
+    }
+
     /**
      * 获取插件名和插件版本的集合
      *

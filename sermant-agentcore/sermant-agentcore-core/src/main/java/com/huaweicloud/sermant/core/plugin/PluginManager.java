@@ -142,6 +142,11 @@ public class PluginManager {
     private static void doInitPlugin(String pluginName, String pluginPath, Instrumentation instrumentation) {
         loadPlugins(pluginName, getPluginDir(pluginPath), instrumentation);
         final ClassLoader classLoader = loadServices(pluginName, getServiceDir(pluginPath));
+        if (classLoader instanceof PluginClassLoader) {
+            ClassLoaderManager.getPluginClassLoaders().add((PluginClassLoader) classLoader);
+        }
+
+        // todo 如果配置加载不到 需要检查这里
         loadConfig(PluginConstant.getPluginConfigFile(pluginPath), classLoader);
         initService(classLoader);
         setDefaultVersion(pluginName);
@@ -215,9 +220,9 @@ public class PluginManager {
     private static ClassLoader loadServices(String pluginName, File serviceDir) {
         final URL[] urls = toUrls(pluginName, listJars(serviceDir));
         if (urls.length > 0) {
-            return new PluginClassLoader(urls, ClassLoaderManager.getCommonClassLoader());
+            return new PluginClassLoader(urls, ClassLoaderManager.getEnhanceClassLoader());
         }
-        return ClassLoader.getSystemClassLoader();
+        return ClassLoaderManager.getEnhanceClassLoader();
     }
 
     /**
@@ -272,9 +277,10 @@ public class PluginManager {
             if (ifCheckSchema && !PluginSchemaValidator.checkSchema(pluginName, jarFile)) {
                 throw new SchemaException(SchemaException.UNEXPECTED_EXT_JAR, jar.getPath());
             }
-            if (consumer != null) {
-                consumer.consume(jarFile);
-            }
+            //            if (consumer != null) {
+            //                consumer.consume(jarFile);
+            //            }
+            ClassLoaderManager.getEnhanceClassLoader().addUrlToEnhanceClassLoaderSearch(jar.toURI().toURL());
             return true;
         } catch (IOException ignored) {
             LOGGER.warning(String.format(Locale.ROOT, "Check schema of %s failed. ", jar.getPath()));

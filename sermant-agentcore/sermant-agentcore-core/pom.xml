@@ -95,8 +95,14 @@
     <dependencies>
         <dependency>
             <groupId>com.huaweicloud.sermant</groupId>
+            <artifactId>sermant-agentcore-premain</artifactId>
+            <version>1.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.huaweicloud.sermant</groupId>
             <artifactId>sermant-agentcore-bootstrap</artifactId>
-            <version>${project.version}</version>
+            <version>1.0.0</version>
         </dependency>
         <dependency>
             <groupId>net.bytebuddy</groupId>

@@ -137,6 +137,19 @@ public class ServiceManager {
         return isLoadSucceed;
     }
 
+    public static void shutdown() {
+        offerEvent();
+        for (BaseService baseService : new HashSet<>(SERVICES.values())) {
+            try {
+                baseService.stop();
+            } catch (Exception ex) {
+                LOGGER.log(Level.SEVERE, String.format(Locale.ENGLISH,
+                        "Error occurs while stopping service: %s", baseService.getClass().toString()), ex);
+            }
+        }
+        SERVICES.clear();
+    }
+
     /**
      * 添加关闭服务的钩子
      */
@@ -144,15 +157,7 @@ public class ServiceManager {
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override
             public void run() {
-                offerEvent();
-                for (BaseService baseService : new HashSet<>(SERVICES.values())) {
-                    try {
-                        baseService.stop();
-                    } catch (Exception ex) {
-                        LOGGER.log(Level.SEVERE, String.format(Locale.ENGLISH,
-                                "Error occurs while stopping service: %s", baseService.getClass().toString()), ex);
-                    }
-                }
+                shutdown();
             }
         }));
     }

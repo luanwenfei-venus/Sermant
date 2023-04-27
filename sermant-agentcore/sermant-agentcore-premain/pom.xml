@@ -50,11 +50,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.huaweicloud.sermant</groupId>
-            <artifactId>sermant-agentcore-core</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
@@ -113,6 +108,7 @@
                     <archive>
                         <manifestEntries>
                             <Premain-Class>com.huawei.sermant.premain.AgentPremain</Premain-Class>
+                            <Agent-Class>com.huawei.sermant.premain.AgentPremain</Agent-Class>
                             <Can-Redefine-Classes>true</Can-Redefine-Classes>
                             <Can-Retransform-Classes>true</Can-Retransform-Classes>
                         </manifestEntries>

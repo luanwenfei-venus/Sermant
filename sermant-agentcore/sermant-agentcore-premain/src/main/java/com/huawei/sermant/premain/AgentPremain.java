@@ -1,47 +1,45 @@
 /*
  * Copyright (C) 2022-2022 Huawei Technologies Co., Ltd. All rights reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package com.huawei.sermant.premain;
 
+import com.huawei.sermant.premain.classloader.CommonClassLoader;
 import com.huawei.sermant.premain.common.BootArgsBuilder;
 import com.huawei.sermant.premain.common.PathDeclarer;
+import com.huawei.sermant.premain.exception.DupAttachException;
 import com.huawei.sermant.premain.exception.DupPremainException;
+import com.huawei.sermant.premain.spi.AgentEntrance;
 
-import com.huaweicloud.sermant.core.AgentCoreEntrance;
-
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
 import java.net.BindException;
-import java.security.acl.NotOwnerException;
-import java.sql.SQLException;
 import java.util.ConcurrentModificationException;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
+import java.util.ServiceLoader;
 import java.util.jar.JarException;
 import java.util.jar.JarFile;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-
-import javax.naming.InsufficientResourcesException;
 
 /**
  * Agent Premain方法
@@ -52,29 +50,61 @@ import javax.naming.InsufficientResourcesException;
 public class AgentPremain {
     private static boolean executeFlag = false;
 
+    private static boolean attachFlag = false;
+
+    private static int attachTimes = 0;
+
     private static final Logger LOGGER = getLogger();
 
-    private AgentPremain() {
-    }
+    private static final String SERMANT_COMMAND = "SERMANT_COMMAND";
+
+    private AgentPremain() {}
 
     /**
-     * premain
+     * premain 用于通过Java options 参数启动Java agent
      *
      * @param agentArgs agentArgs
      * @param instrumentation instrumentation
-     * @throws DupPremainException
      */
     public static void premain(String agentArgs, Instrumentation instrumentation) {
-        try {
-            // 执行标记，防止重复运行
-            if (executeFlag) {
-                throw new DupPremainException();
-            }
-            executeFlag = true;
+        // 执行标记，防止重复运行
+        if (executeFlag) {
+            throw new DupPremainException();
+        }
+        executeFlag = true;
+        launchAgent(agentArgs, instrumentation);
+    }
 
-            // 添加引导库
-            LOGGER.info("Loading bootstrap library... ");
-            loadBootstrapLib(instrumentation);
+    /**
+     * agentmain 用于通过attach来启动Java agent
+     *
+     * @param agentArgs agentArgs
+     * @param instrumentation instrumentation
+     */
+    public static void agentmain(String agentArgs, Instrumentation instrumentation) {
+        if (attachFlag) {
+            throw new DupAttachException();
+        }
+        attachFlag = true;
+        launchAgent(agentArgs, instrumentation);
+
+        // 挂载次数计数
+        attachTimes++;
+
+        // 启动命令监听
+        commandListener();
+    }
+
+    private static void launchAgent(String agentArgs, Instrumentation instrumentation) {
+        try {
+            if (attachTimes == 0) {
+                // 添加引导库
+                LOGGER.info("Loading bootstrap library... ");
+                loadBootstrapLib(instrumentation);
+            } else {
+                LOGGER.info("Reattach sermant agent... ");
+            }
+            AgentManager.initCommonClassLoader();
 
             // 添加核心库
             LOGGER.info("Loading core library... ");
@@ -86,20 +116,25 @@ public class AgentPremain {
 
             // agent core入口
             LOGGER.info("Loading sermant agent... ");
-            AgentCoreEntrance.run(argsMap, instrumentation);
+
+            // AgentCoreEntrance.run(argsMap, instrumentation);
+            for (AgentEntrance agentEntrance : ServiceLoader.load(AgentEntrance.class,
+                AgentManager.getCommonClassLoader())) {
+                LOGGER.info("Start sermant agent... ");
+                agentEntrance.run(argsMap, instrumentation);
+            }
 
             LOGGER.info("Load sermant done. ");
-        } catch (FileNotFoundException | OutOfMemoryError | StackOverflowError | MissingResourceException
-                 | NotOwnerException | JarException | ConcurrentModificationException | BindException
-                 | InsufficientResourcesException | SQLException e) {
+        } catch (FileNotFoundException | OutOfMemoryError | StackOverflowError | MissingResourceException | JarException
+            | ConcurrentModificationException | BindException e) {
             LOGGER.severe("Loading sermant agent failed. ");
         } catch (Exception e) {
-            LOGGER.severe(
-                    String.format(Locale.ROOT, "Loading sermant agent failed, %s. ", e));
+            LOGGER.severe(String.format(Locale.ROOT, "Loading sermant agent failed, %s. ", e));
         }
     }
 
     private static void loadCoreLib(Instrumentation instrumentation) throws IOException {
+        CommonClassLoader commonClassLoader = AgentManager.getCommonClassLoader();
         final File coreDir = new File(PathDeclarer.getCorePath());
         if (!coreDir.exists() || !coreDir.isDirectory()) {
             throw new RuntimeException("core directory is not exist or is not directory.");
@@ -114,19 +149,7 @@ public class AgentPremain {
             throw new RuntimeException("core directory is empty");
         }
         for (File jar : jars) {
-            JarFile jarFile = null;
-            try {
-                jarFile = new JarFile(jar);
-                instrumentation.appendToSystemClassLoaderSearch(jarFile);
-            } finally {
-                if (jarFile != null) {
-                    try {
-                        jarFile.close();
-                    } catch (IOException ignored) {
-                        LOGGER.severe(ignored.getMessage());
-                    }
-                }
-            }
+            commonClassLoader.appendToCommonClassloaderSearch(jar.toURI().toURL());
         }
     }
 
@@ -159,6 +182,54 @@ public class AgentPremain {
                 }
             }
         }
+    }
+
+    private static void commandListener() {
+        new Thread(() -> {
+            String filePath = PathDeclarer.getAgentPath() + File.separatorChar + "sermant_command.txt";
+            Map<String, String> keyValueMap = readTxtFile(filePath);
+            String currentValue = keyValueMap.get(SERMANT_COMMAND);
+
+            while (true) {
+                keyValueMap = readTxtFile(filePath);
+                String newValue = keyValueMap.get(SERMANT_COMMAND);
+                if (newValue != null && !currentValue.equals(newValue)) {
+                    LOGGER.info("Environment variable " + SERMANT_COMMAND + " changed from " + currentValue + " to "
+                        + newValue);
+                    // if ("SERMANT_DETACH".equals(currentValue)) {
+                    LOGGER.info("Detaching sermant agent...");
+                    for (AgentEntrance agentEntrance : ServiceLoader.load(AgentEntrance.class,
+                        AgentManager.getCommonClassLoader())) {
+                        agentEntrance.unInstall();
+                    }
+                    // AgentCoreEntrance.unInstall();
+                    AgentManager.getCommonClassLoader().shutdown();
+                    attachFlag = false;
+                    break;
+                    // }
+                }
+            }
+        }).start();
+    }
+
+    public static Map<String, String> readTxtFile(String filePath) {
+        Map<String, String> keyValueMap = new HashMap<>();
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] keyValue = line.split(":");
+                if (keyValue.length == 2) {
+                    String key = keyValue[0].trim();
+                    String value = keyValue[1].trim();
+                    keyValueMap.put(key, value);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return keyValueMap;
     }
 
     private static Logger getLogger() {

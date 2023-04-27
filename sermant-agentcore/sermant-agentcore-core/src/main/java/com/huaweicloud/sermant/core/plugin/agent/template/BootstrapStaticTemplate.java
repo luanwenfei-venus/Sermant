@@ -16,7 +16,8 @@
 
 package com.huaweicloud.sermant.core.plugin.agent.template;
 
-import com.huaweicloud.sermant.core.plugin.agent.adviser.Adviser;
+
+import com.huaweicloud.sermant.core.plugin.agent.bootstrap.Adviser;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 
 import net.bytebuddy.asm.Advice;

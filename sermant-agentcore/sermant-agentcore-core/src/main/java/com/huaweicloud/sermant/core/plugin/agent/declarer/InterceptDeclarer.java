@@ -76,7 +76,7 @@ public abstract class InterceptDeclarer {
      * @throws IllegalArgumentException IllegalArgumentException
      */
     public static InterceptDeclarer build(MethodMatcher methodMatcher, String... interceptors) {
-        if (methodMatcher == null || interceptors == null || interceptors.length <= 0) {
+        if (methodMatcher == null || interceptors == null || interceptors.length == 0) {
             throw new IllegalArgumentException("Matcher cannot be null and interceptor array cannot be empty. ");
         }
         return new InterceptDeclarer() {

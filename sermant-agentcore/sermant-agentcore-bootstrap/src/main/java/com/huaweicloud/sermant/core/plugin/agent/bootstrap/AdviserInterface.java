@@ -1,4 +1,4 @@
-package com.huaweicloud.sermant.core.plugin.agent.adviser;
+package com.huaweicloud.sermant.core.plugin.agent.bootstrap;
 
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;

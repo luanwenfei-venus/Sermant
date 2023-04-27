@@ -38,11 +38,4 @@ public interface PluginCollector {
      * @return 插件声明器的集合
      */
     Iterable<? extends PluginDeclarer> getDeclarers();
-
-    /**
-     * 获取插件描述器的集合
-     *
-     * @return 描述器的集合
-     */
-    Iterable<? extends PluginDescription> getDescriptions();
 }

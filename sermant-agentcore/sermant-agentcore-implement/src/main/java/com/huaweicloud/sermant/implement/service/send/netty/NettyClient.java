@@ -103,6 +103,9 @@ public class NettyClient {
      */
     public void stop() {
         eventLoopGroup.shutdownGracefully();
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdownNow();
+        }
     }
 
     private void bind() {

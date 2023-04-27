@@ -18,6 +18,7 @@ package com.huaweicloud.sermant.core.classloader;
 
 import com.huaweicloud.sermant.core.common.BootArgsIndexer;
 import com.huaweicloud.sermant.core.common.CommonConstant;
+import com.huaweicloud.sermant.core.common.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -121,5 +122,15 @@ public class FrameworkClassLoader extends URLClassLoader {
             return findResources(name);
         }
         return super.getResources(name);
+    }
+
+    public void shutdown(){
+        frameworkClassMap.clear();
+        this.clearAssertionStatus();
+        try {
+            this.close();
+        } catch (IOException e) {
+            LoggerFactory.getLogger().severe("Close FrameWorkClassLoader error:" + e.getMessage());
+        }
     }
 }

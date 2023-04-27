@@ -21,6 +21,7 @@ import com.huaweicloud.sermant.core.config.common.ConfigTypeKey;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDeclarer;
 import com.huaweicloud.sermant.core.plugin.agent.matcher.ClassTypeMatcher;
 
+import java.io.FileInputStream;
 import java.util.Collections;
 import java.util.Set;
 

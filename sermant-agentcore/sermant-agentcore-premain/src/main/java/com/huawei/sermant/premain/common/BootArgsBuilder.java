@@ -1,24 +1,19 @@
 /*
  * Copyright (C) 2021-2021 Huawei Technologies Co., Ltd. All rights reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package com.huawei.sermant.premain.common;
 
-import com.huaweicloud.sermant.core.common.CommonConstant;
-import com.huaweicloud.sermant.core.common.LoggerFactory;
-import com.huaweicloud.sermant.core.utils.StringUtils;
+import com.huawei.sermant.premain.utils.StringUtils;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -37,7 +32,7 @@ import java.util.logging.Logger;
  * @since 2021-11-12
  */
 public abstract class BootArgsBuilder {
-    private static final Logger LOGGER = LoggerFactory.getLogger();
+    private static final Logger LOGGER = Logger.getLogger("sermant");
 
     /**
      * 构建启动参数
@@ -85,7 +80,7 @@ public abstract class BootArgsBuilder {
             properties.load(configStream);
         } catch (IOException ioException) {
             LOGGER.severe(String.format(Locale.ROOT, "Exception occurs when close config InputStream , %s .",
-                    ioException.getMessage()));
+                ioException.getMessage()));
         }
         return properties;
     }
@@ -134,10 +129,10 @@ public abstract class BootArgsBuilder {
      */
     private static void addNormalEntries(Map<String, Object> argsMap, Properties configMap) {
         for (Object key : configMap.keySet()) {
-            if (!argsMap.containsKey((String) key)) {
-                final String value = configMap.getProperty((String) key);
+            if (!argsMap.containsKey((String)key)) {
+                final String value = configMap.getProperty((String)key);
                 if (value != null) {
-                    argsMap.put((String) key, getActualValue(value));
+                    argsMap.put((String)key, getActualValue(value));
                 }
             }
         }

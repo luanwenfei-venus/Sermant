@@ -63,7 +63,7 @@ public class PluginSystemEntrance {
     }
 
     /**
-     * 初始化插件相关的内容，分插件和适配器两种
+     * 初始化插件相关的内容
      *
      * @param instrumentation Instrumentation对象
      */

@@ -17,7 +17,7 @@
 package com.huaweicloud.sermant.core.plugin.agent.template;
 
 import com.huaweicloud.sermant.core.common.LoggerFactory;
-import com.huaweicloud.sermant.core.plugin.agent.adviser.AdviserInterface;
+import com.huaweicloud.sermant.core.plugin.agent.bootstrap.AdviserInterface;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
 

@@ -1,25 +1,24 @@
 /*
  * Copyright (C) 2022-2022 Huawei Technologies Co., Ltd. All rights reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
-package com.huaweicloud.sermant.core.classloader;
+package com.huawei.sermant.premain.classloader;
 
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * 公共类加载器
@@ -51,11 +50,20 @@ public class CommonClassLoader extends URLClassLoader {
     @Override
     public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         synchronized (getClassLoadingLock(name)) {
-            // 破坏双亲委派，先从自身加载，再从父类加载，保持Sermant插件服务的第三方依赖和宿主依赖隔离
-            Class<?> clazz = loadCommonClass(name);
+            Class<?> clazz = null;
+
+            // 对于core中已经加载的类则遵循双亲委派原则,其他类则破坏双亲委派机制
+            if (name != null && !name.startsWith("com.huaweicloud.sermant.core")) {
+                clazz = loadCommonClass(name);
+            }
 
             if (clazz == null) {
-                clazz = getParent().loadClass(name);
+                clazz = super.loadClass(name, resolve);
+
+                // 通过FrameworkClassLoader的super.loadClass方法把从自身加载的类放入缓存
+                if (clazz != null && clazz.getClassLoader() == this) {
+                    commonClassMap.put(name, clazz);
+                }
             }
 
             if (resolve) {
@@ -81,5 +89,18 @@ public class CommonClassLoader extends URLClassLoader {
             }
         }
         return commonClassMap.get(name);
+    }
+
+    public void shutdown() {
+        commonClassMap.clear();
+        try {
+            this.close();
+        } catch (IOException e) {
+            Logger.getLogger("sermant").severe("Close CommonClassLoader error:" + e.getMessage());
+        }
+    }
+
+    public void appendToCommonClassloaderSearch(URL url) {
+        this.addURL(url);
     }
 }

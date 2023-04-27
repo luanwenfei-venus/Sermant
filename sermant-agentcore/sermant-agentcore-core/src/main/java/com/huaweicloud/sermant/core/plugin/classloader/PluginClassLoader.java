@@ -18,10 +18,12 @@ package com.huaweicloud.sermant.core.plugin.classloader;
 
 import com.huaweicloud.sermant.core.common.BootArgsIndexer;
 import com.huaweicloud.sermant.core.common.CommonConstant;
+import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.config.ConfigManager;
 import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -136,5 +138,15 @@ public class PluginClassLoader extends URLClassLoader {
     @Override
     public void addURL(URL url) {
         super.addURL(url);
+    }
+
+    public void shutdown(){
+        pluginClassMap.clear();
+        this.clearAssertionStatus();
+        try {
+            this.close();
+        } catch (IOException e) {
+            LoggerFactory.getLogger().severe("Close FrameWorkClassLoader error:" + e.getMessage());
+        }
     }
 }

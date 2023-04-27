@@ -81,6 +81,8 @@ public class EventManager {
      */
     public static void shutdown() {
         collectAll();
+        EXECUTOR_SERVICE.shutdown();
+        EVENT_COLLECTORS.clear();
     }
 
     /**

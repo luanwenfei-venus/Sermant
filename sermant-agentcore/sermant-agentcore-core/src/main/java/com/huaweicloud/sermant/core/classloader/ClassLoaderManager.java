@@ -1,22 +1,24 @@
 /*
  * Copyright (C) 2022-2022 Huawei Technologies Co., Ltd. All rights reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package com.huaweicloud.sermant.core.classloader;
 
 import com.huaweicloud.sermant.core.common.CommonConstant;
+
+import com.huawei.sermant.premain.AgentManager;
+import com.huawei.sermant.premain.classloader.CommonClassLoader;
+
+import com.huaweicloud.sermant.core.plugin.classloader.PluginClassLoader;
 import com.huaweicloud.sermant.core.utils.FileUtils;
 
 import java.io.File;
@@ -37,8 +39,11 @@ public class ClassLoaderManager {
 
     private static CommonClassLoader commonClassLoader;
 
-    private ClassLoaderManager() {
-    }
+    private static EnhanceClassLoader enhanceClassLoader;
+
+    private static List<PluginClassLoader> pluginClassLoaders;
+
+    private ClassLoaderManager() {}
 
     /**
      * Init custom classloaders.
@@ -47,8 +52,19 @@ public class ClassLoaderManager {
      * @throws MalformedURLException MalformedURLException
      */
     public static void init(Map<String, Object> argsMap) throws MalformedURLException {
+        pluginClassLoaders = new ArrayList<>();
         initCommonClassLoader(argsMap.get(CommonConstant.COMMON_DEPENDENCY_DIR_KEY).toString());
         initFrameworkClassLoader(argsMap.get(CommonConstant.CORE_IMPLEMENT_DIR_KEY).toString());
+        enhanceClassLoader = new EnhanceClassLoader(new URL[0], commonClassLoader);
+    }
+
+    public static void shutdown() {
+        for (PluginClassLoader pluginClassLoader : pluginClassLoaders) {
+            pluginClassLoader.shutdown();
+        }
+        enhanceClassLoader.shutdown();
+        frameworkClassLoader.shutdown();
+        // commonClassLoader.shutdown();
     }
 
     /**
@@ -60,13 +76,22 @@ public class ClassLoaderManager {
         return frameworkClassLoader;
     }
 
+    // /**
+    // * For getting CommonClassLoader
+    // *
+    // * @return A commonClassLoader that has been initialized.
+    // */
+    // public static CommonClassLoader getCommonClassLoader() {
+    // return commonClassLoader;
+    // }
+
     /**
-     * For getting CommonClassLoader
+     * For getting EnhanceClassLoader
      *
-     * @return A commonClassLoader that has been initialized.
+     * @return A enhanceClassLoader that has been initialized.
      */
-    public static CommonClassLoader getCommonClassLoader() {
-        return commonClassLoader;
+    public static EnhanceClassLoader getEnhanceClassLoader() {
+        return enhanceClassLoader;
     }
 
     private static void initFrameworkClassLoader(String path) throws MalformedURLException {
@@ -80,7 +105,7 @@ public class ClassLoaderManager {
             throw new RuntimeException("core implement directory is not exist or is not directory.");
         }
         File[] jars = coreImplementDir.listFiles((file, name) -> name.endsWith(".jar"));
-        if (jars == null || jars.length <= 0) {
+        if (jars == null || jars.length == 0) {
             throw new RuntimeException("core implement directory is empty");
         }
         List<URL> urlList = new ArrayList<>();
@@ -91,8 +116,11 @@ public class ClassLoaderManager {
     }
 
     private static void initCommonClassLoader(String path) throws MalformedURLException {
+        commonClassLoader = AgentManager.getCommonClassLoader();
         URL[] commonLibUrls = listCommonLibUrls(path);
-        commonClassLoader = new CommonClassLoader(commonLibUrls);
+        for (URL url : commonLibUrls) {
+            commonClassLoader.appendToCommonClassloaderSearch(url);
+        }
     }
 
     private static URL[] listCommonLibUrls(String commonLibPath) throws MalformedURLException {
@@ -101,7 +129,7 @@ public class ClassLoaderManager {
             throw new RuntimeException("common lib is not exist or is not directory.");
         }
         File[] jars = commonLibDir.listFiles((file, name) -> name.endsWith(".jar"));
-        if (jars == null || jars.length <= 0) {
+        if (jars == null || jars.length == 0) {
             throw new RuntimeException("common lib directory is empty");
         }
         List<URL> urlList = new ArrayList<>();
@@ -109,5 +137,9 @@ public class ClassLoaderManager {
             urlList.add(jar.toURI().toURL());
         }
         return urlList.toArray(new URL[0]);
+    }
+
+    public static List<PluginClassLoader> getPluginClassLoaders() {
+        return pluginClassLoaders;
     }
 }

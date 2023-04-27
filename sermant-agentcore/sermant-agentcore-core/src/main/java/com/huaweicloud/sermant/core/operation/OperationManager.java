@@ -46,6 +46,10 @@ public class OperationManager {
         }
     }
 
+    public static void shutdown(){
+        OPERATIONS.clear();
+    }
+
     /**
      * 获取操作实例
      *

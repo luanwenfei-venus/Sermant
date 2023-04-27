@@ -19,6 +19,7 @@ package com.huawei.dubbo.registry.utils;
 import com.huawei.dubbo.registry.cache.DubboCache;
 import com.huawei.dubbo.registry.constants.Constant;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.utils.ClassLoaderUtils;
 
@@ -79,8 +80,10 @@ public class ReflectUtils {
     public static Optional<Class<?>> defineClass(String className) {
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
+//            return Optional.of(ClassLoaderUtils.defineClass(className, contextClassLoader,
+//                ClassLoaderUtils.getClassResource(ClassLoader.getSystemClassLoader(), className)));
             return Optional.of(ClassLoaderUtils.defineClass(className, contextClassLoader,
-                ClassLoaderUtils.getClassResource(ClassLoader.getSystemClassLoader(), className)));
+                    ClassLoaderUtils.getClassResource(ClassLoaderManager.getPluginClassLoader(), className)));
         } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException | IOException e) {
             // 有可能已经加载过了，直接用contextClassLoader.loadClass加载
             try {

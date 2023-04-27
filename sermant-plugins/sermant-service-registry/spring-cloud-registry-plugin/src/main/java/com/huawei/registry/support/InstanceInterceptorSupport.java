@@ -20,6 +20,7 @@ package com.huawei.registry.support;
 import com.huawei.registry.config.RegisterConfig;
 import com.huawei.registry.entity.MicroServiceInstance;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.plugin.config.PluginConfigManager;
 import com.huaweicloud.sermant.core.utils.ClassLoaderUtils;
 import com.huaweicloud.sermant.core.utils.StringUtils;
@@ -100,7 +101,7 @@ public abstract class InstanceInterceptorSupport extends RegisterSwitchSupport {
             Class<?> result = null;
             try {
                 result = ClassLoaderUtils.defineClass(className, contextClassLoader,
-                    ClassLoaderUtils.getClassResource(ClassLoader.getSystemClassLoader(), className));
+                    ClassLoaderUtils.getClassResource(ClassLoaderManager.getPluginClassLoader(), className));
             } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException | IOException e) {
                 // 有可能已经加载过了，直接用contextClassLoader.loadClass加载
                 try {

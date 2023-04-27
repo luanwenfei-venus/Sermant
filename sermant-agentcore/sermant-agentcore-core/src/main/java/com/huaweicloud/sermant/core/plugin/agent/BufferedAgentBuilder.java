@@ -28,9 +28,13 @@ import com.huaweicloud.sermant.core.utils.FileUtils;
 
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.AgentBuilder.Default;
+import net.bytebuddy.agent.builder.AgentBuilder.LocationStrategy;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.description.type.TypeList.Generic;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.ClassFileLocator.ForModule;
+import net.bytebuddy.dynamic.ClassFileLocator.PackageDiscriminating;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.utility.JavaModule;
 
@@ -274,7 +278,8 @@ public class BufferedAgentBuilder {
      * @return 安装结果，可重置的转换器，若无类元信息改动，调用其reset方法即可重置
      */
     public ResettableClassFileTransformer install(Instrumentation instrumentation) {
-        AgentBuilder builder = new Default().disableClassFormatChanges();
+        AgentBuilder builder =
+                new Default().disableClassFormatChanges();
         for (BuilderAction action : actions) {
             builder = action.process(builder);
         }

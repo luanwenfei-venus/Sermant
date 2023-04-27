@@ -17,6 +17,7 @@
 
 package com.huaweicloud.sermant.core.utils;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 
 import java.io.IOException;
@@ -50,7 +51,7 @@ public class ClassUtils {
         }
         try {
             return Optional.of(ClassLoaderUtils.defineClass(className, classLoader, ClassLoaderUtils
-                    .getClassResource(ClassLoader.getSystemClassLoader(), className)));
+                    .getClassResource(ClassLoaderManager.getPluginClassLoader(), className)));
         } catch (InvocationTargetException ex) {
             LOGGER.fine(String.format(Locale.ENGLISH, "Can not define class [%s], reason: [%s], may be it has been "
                     + "defined, so try to load it!", className, ex.getMessage()));

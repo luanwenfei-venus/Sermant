@@ -13,6 +13,7 @@
 
 package com.huaweicloud.sermant.core.plugin.classloader;
 
+import com.huaweicloud.sermant.core.common.CommonConstant;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 
 import java.net.URL;
@@ -56,16 +57,16 @@ public class PluginClassLoader extends URLClassLoader {
         classLoaders.add(classLoader);
     }
 
-    private Class<?> findPluginClass(String name) {
-        if (!pluginClassMap.containsKey(name)) {
-            try {
-                pluginClassMap.put(name, findClass(name));
-            } catch (ClassNotFoundException ignored) {
-                pluginClassMap.put(name, null);
-            }
-        }
-        return pluginClassMap.get(name);
-    }
+    // private Class<?> findPluginClass(String name) {
+    // if (!pluginClassMap.containsKey(name)) {
+    // try {
+    // pluginClassMap.put(name, findClass(name));
+    // } catch (ClassNotFoundException ignored) {
+    // pluginClassMap.put(name, null);
+    // }
+    // }
+    // return pluginClassMap.get(name);
+    // }
 
     @Override
     public Class<?> loadClass(String name) throws ClassNotFoundException {
@@ -77,18 +78,16 @@ public class PluginClassLoader extends URLClassLoader {
         synchronized (getClassLoadingLock(name)) {
             LOGGER.log(Level.WARNING, "Load class by classLoaderCache class name : {0}.", name);
             // 再从自身查找 先从父类查找 再从上下文类加载器查找 再从类加载器缓存中查找
-            Class<?> clazz = findPluginClass(name);
+            Class<?> clazz = null;
 
-            if (clazz == null) {
-                try {
-                    // 这里需要调用父类的同参数方法 否则: StackOverFlow
-                    clazz = super.loadClass(name, resolve);
-                } catch (ClassNotFoundException e) {
-                    // 破坏双亲委派
-                }
+            try {
+                // 这里需要调用父类的同参数方法 否则: StackOverFlow
+                clazz = super.loadClass(name, resolve);
+            } catch (ClassNotFoundException e) {
+                // 破坏双亲委派
             }
 
-            if (clazz == null) {
+            if (clazz == null && !ifExclude(name)) {
                 // 自身和线程上下文类加载器不同时从自身找,否则会堆栈溢出
                 if (!this.equals(Thread.currentThread().getContextClassLoader())) {
                     try {
@@ -99,18 +98,18 @@ public class PluginClassLoader extends URLClassLoader {
                 }
             }
 
-//            if (clazz == null) {
-//                LOGGER.log(Level.WARNING, "Load class by classLoaderCache class name : {0}.", name);
-//                for (ClassLoader classLoader : classLoaders) {
-//                    if (!this.equals(classLoader)) {
-//                        try {
-//                            clazz = classLoader.loadClass(name);
-//                        } catch (ClassNotFoundException e) {
-//                            // 缓存类加载器也找不到
-//                        }
-//                    }
-//                }
-//            }
+            // if (clazz == null) {
+            // LOGGER.log(Level.WARNING, "Load class by classLoaderCache class name : {0}.", name);
+            // for (ClassLoader classLoader : classLoaders) {
+            // if (!this.equals(classLoader)) {
+            // try {
+            // clazz = classLoader.loadClass(name);
+            // } catch (ClassNotFoundException e) {
+            // // 缓存类加载器也找不到
+            // }
+            // }
+            // }
+            // }
             if (clazz == null) {
                 throw new ClassNotFoundException("Sermant pluginClassLoader can not load class: " + name);
             }
@@ -125,5 +124,26 @@ public class PluginClassLoader extends URLClassLoader {
             }
             return clazz;
         }
+    }
+
+    public Class<?> loadClassOnlySermant(String name, boolean resolve) throws ClassNotFoundException {
+        Class<?> clazz = null;
+
+        // 这里需要调用父类的同参数方法 否则: StackOverFlow
+        clazz = super.loadClass(name, resolve);
+
+        if (resolve) {
+            resolveClass(clazz);
+        }
+        return clazz;
+    }
+
+    private boolean ifExclude(String name) {
+        for (String excludePrefix : CommonConstant.IGNORE_PREFIXES) {
+            if (name.startsWith(excludePrefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

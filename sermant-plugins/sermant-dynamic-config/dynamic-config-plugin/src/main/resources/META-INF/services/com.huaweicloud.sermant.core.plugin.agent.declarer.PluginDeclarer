@@ -18,3 +18,4 @@
 com.huawei.dynamic.config.declarers.SpringFactoriesDeclarer
 com.huawei.dynamic.config.declarers.ZookeeperLocatorDeclarer
 com.huawei.dynamic.config.declarers.MutableSourceDeclarer
+com.huawei.dynamic.config.declarers.ClassLoaderDeclarer

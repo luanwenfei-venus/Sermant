@@ -76,8 +76,8 @@ public class PluginClassLoader extends URLClassLoader {
     @Override
     public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         synchronized (getClassLoadingLock(name)) {
-            LOGGER.log(Level.WARNING, "Load class by classLoaderCache class name : {0}.", name);
-            // 再从自身查找 先从父类查找 再从上下文类加载器查找 再从类加载器缓存中查找
+//            LOGGER.log(Level.WARNING, "Load class by plugin-classloader class name : {0}.", name);
+            // 先从父类查找 再从自身查找 再从上下文类加载器查找 再从类加载器缓存中查找
             Class<?> clazz = null;
 
             try {

@@ -28,13 +28,13 @@ import com.huaweicloud.sermant.core.utils.FileUtils;
 
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.AgentBuilder.Default;
-import net.bytebuddy.agent.builder.AgentBuilder.LocationStrategy;
+import net.bytebuddy.agent.builder.AgentBuilder.LocationStrategy.Compound;
+import net.bytebuddy.agent.builder.AgentBuilder.LocationStrategy.ForClassLoader;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.description.type.TypeList.Generic;
 import net.bytebuddy.dynamic.ClassFileLocator;
-import net.bytebuddy.dynamic.ClassFileLocator.ForModule;
-import net.bytebuddy.dynamic.ClassFileLocator.PackageDiscriminating;
+import net.bytebuddy.dynamic.ClassFileLocator.Resolution.Illegal;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.utility.JavaModule;
 
@@ -53,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -83,8 +84,7 @@ public class BufferedAgentBuilder {
      */
     private final List<BuilderAction> actions = new ArrayList<>();
 
-    private BufferedAgentBuilder() {
-    }
+    private BufferedAgentBuilder() {}
 
     /**
      * 创建{@link BufferedAgentBuilder}并依据配置设置基础操作：
@@ -98,10 +98,7 @@ public class BufferedAgentBuilder {
      * @return BufferedAgentBuilder实例
      */
     public static BufferedAgentBuilder build() {
-        return new BufferedAgentBuilder().setBootStrapStrategy()
-                .setIgnoredRule()
-                .setLogListener()
-                .setOutputListener();
+        return new BufferedAgentBuilder().setBootStrapStrategy().setIgnoredRule().setLogListener().setOutputListener();
     }
 
     /**
@@ -213,12 +210,10 @@ public class BufferedAgentBuilder {
         String currentTime = LocalDateTime.now().format(formatter);
         if (outputPath == null || outputPath.isEmpty()) {
             outputDirectory = Paths.get(FileUtils.getAgentPath())
-                    .resolve(CommonConstant.ENHANCED_CLASS_OUTPUT_PARENT_DIR)
-                    .resolve(currentTime);
+                .resolve(CommonConstant.ENHANCED_CLASS_OUTPUT_PARENT_DIR).resolve(currentTime);
         } else {
-            outputDirectory = Paths.get(outputPath)
-                    .resolve(CommonConstant.ENHANCED_CLASS_OUTPUT_PARENT_DIR)
-                    .resolve(currentTime);
+            outputDirectory =
+                Paths.get(outputPath).resolve(CommonConstant.ENHANCED_CLASS_OUTPUT_PARENT_DIR).resolve(currentTime);
         }
         final File file;
         try {
@@ -229,13 +224,12 @@ public class BufferedAgentBuilder {
         }
         return addAction(builder -> builder.with(new AgentBuilder.Listener.Adapter() {
             @Override
-            public void onTransformation(TypeDescription typeDescription, ClassLoader classLoader,
-                    JavaModule module, boolean loaded, DynamicType dynamicType) {
+            public void onTransformation(TypeDescription typeDescription, ClassLoader classLoader, JavaModule module,
+                boolean loaded, DynamicType dynamicType) {
                 try {
                     dynamicType.saveIn(file);
                 } catch (IOException e) {
-                    LOGGER.warning(String.format(
-                            "Save class [%s] byte code failed. ", typeDescription.getTypeName()));
+                    LOGGER.warning(String.format("Save class [%s] byte code failed. ", typeDescription.getTypeName()));
                 }
             }
         }));
@@ -278,8 +272,9 @@ public class BufferedAgentBuilder {
      * @return 安装结果，可重置的转换器，若无类元信息改动，调用其reset方法即可重置
      */
     public ResettableClassFileTransformer install(Instrumentation instrumentation) {
-        AgentBuilder builder =
-                new Default().disableClassFormatChanges();
+        AgentBuilder builder = new Default().disableClassFormatChanges();
+        builder = builder.with(
+            new Compound((classLoader, module) -> new UserDefineClassFileLocator(classLoader), ForClassLoader.STRONG));
         for (BuilderAction action : actions) {
             builder = action.process(builder);
         }
@@ -307,9 +302,9 @@ public class BufferedAgentBuilder {
 
         @Override
         public boolean matches(TypeDescription typeDesc, ClassLoader classLoader, JavaModule javaModule,
-                Class<?> classBeingRedefined, ProtectionDomain protectionDomain) {
+            Class<?> classBeingRedefined, ProtectionDomain protectionDomain) {
             return isArrayOrPrimitive(typeDesc) || checkClassLoader(typeDesc, classLoader)
-                    || isIgnoredPrefixes(typeDesc) || isIgnoredInterfaces(typeDesc);
+                || isIgnoredPrefixes(typeDesc) || isIgnoredInterfaces(typeDesc);
         }
 
         private boolean isArrayOrPrimitive(TypeDescription typeDesc) {
@@ -368,5 +363,33 @@ public class BufferedAgentBuilder {
          * @return 构建器
          */
         AgentBuilder process(AgentBuilder builder);
+    }
+
+    static class UserDefineClassFileLocator implements ClassFileLocator {
+        private final ClassLoader classLoader;
+
+        protected UserDefineClassFileLocator(ClassLoader classLoader) {
+            this.classLoader = classLoader;
+        }
+
+        @Override
+        public Resolution locate(String name) throws IOException {
+            try {
+                if (classLoader == null) {
+                    return ForClassLoader.of(null).locate(name);
+                }
+                ClassLoader realLoader = classLoader.loadClass(name).getClassLoader();
+                return ForClassLoader.of(realLoader).locate(name);
+            } catch (ClassNotFoundException exception) {
+                LOGGER.log(Level.WARNING, "Cannot load class {0}, by classloader {1}",
+                    new Object[] {name, classLoader});
+            }
+            return new Illegal(name);
+        }
+
+        @Override
+        public void close() throws IOException {
+
+        }
     }
 }

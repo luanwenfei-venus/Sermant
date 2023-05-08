@@ -20,6 +20,7 @@ package com.huawei.registry.interceptors;
 import com.huawei.registry.config.GraceConfig;
 import com.huawei.registry.support.RegisterSwitchSupport;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.config.PluginConfigManager;
@@ -58,7 +59,7 @@ public class SpringFactoriesInterceptor extends RegisterSwitchSupport {
      * 初始化加载注入定义
      */
     public SpringFactoriesInterceptor() {
-        for (ClassInjectDefine define : ServiceLoader.load(ClassInjectDefine.class)) {
+        for (ClassInjectDefine define : ServiceLoader.load(ClassInjectDefine.class, ClassLoaderManager.getPluginClassLoader())) {
             if (define.plugin() == Plugin.SPRING_REGISTRY_PLUGIN) {
                 CLASS_DEFINES.add(define);
             }

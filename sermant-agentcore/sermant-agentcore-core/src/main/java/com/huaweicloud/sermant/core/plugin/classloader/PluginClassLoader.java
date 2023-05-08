@@ -98,18 +98,6 @@ public class PluginClassLoader extends URLClassLoader {
                 }
             }
 
-            // if (clazz == null) {
-            // LOGGER.log(Level.WARNING, "Load class by classLoaderCache class name : {0}.", name);
-            // for (ClassLoader classLoader : classLoaders) {
-            // if (!this.equals(classLoader)) {
-            // try {
-            // clazz = classLoader.loadClass(name);
-            // } catch (ClassNotFoundException e) {
-            // // 缓存类加载器也找不到
-            // }
-            // }
-            // }
-            // }
             if (clazz == null) {
                 throw new ClassNotFoundException("Sermant pluginClassLoader can not load class: " + name);
             }

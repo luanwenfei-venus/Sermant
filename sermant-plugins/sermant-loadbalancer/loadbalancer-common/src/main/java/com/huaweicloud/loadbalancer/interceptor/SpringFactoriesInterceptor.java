@@ -17,6 +17,7 @@
 
 package com.huaweicloud.loadbalancer.interceptor;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.AbstractInterceptor;
@@ -55,7 +56,7 @@ public class SpringFactoriesInterceptor extends AbstractInterceptor {
      * 初始化加载注入定义
      */
     public SpringFactoriesInterceptor() {
-        for (ClassInjectDefine define : ServiceLoader.load(ClassInjectDefine.class)) {
+        for (ClassInjectDefine define : ServiceLoader.load(ClassInjectDefine.class, ClassLoaderManager.getPluginClassLoader())) {
             if (define.plugin() == Plugin.LOAD_BALANCER_PLUGIN) {
                 CLASS_DEFINES.add(define);
             }

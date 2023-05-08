@@ -57,7 +57,7 @@ public class OriginConfigCenterDisableListener implements BeanFactoryAware {
     private final AtomicBoolean isShutdown = new AtomicBoolean();
 
     private final List<ConfigCenterCloser> configCenterClosers =
-            new ArrayList<>(DynamicConstants.CONFIG_CENTER_CLOSER_INIT_NUM);
+        new ArrayList<>(DynamicConstants.CONFIG_CENTER_CLOSER_INIT_NUM);
 
     @Autowired
     private Environment environment;
@@ -84,14 +84,14 @@ public class OriginConfigCenterDisableListener implements BeanFactoryAware {
                 }
                 if (closer.close(beanFactory, environment)) {
                     LOGGER.warning(String.format(Locale.ENGLISH, "Origin Config Center [%s] has been unSubscribed!",
-                            closer.type()));
+                        closer.type()));
                 }
             }
             tryAddDynamicSourceToFirst(environment);
 
             // 发布刷新事件补偿, 及时刷新禁用后的数据
-            springEventPublisher.publishRefreshEvent(DynamicConfigEvent.modifyEvent(event.getKey(), event.getGroup(),
-                    event.getContent()));
+            springEventPublisher.publishRefreshEvent(
+                DynamicConfigEvent.modifyEvent(event.getKey(), event.getGroup(), event.getContent()));
         });
     }
 
@@ -99,7 +99,7 @@ public class OriginConfigCenterDisableListener implements BeanFactoryAware {
         if (!(curEnv instanceof ConfigurableEnvironment)) {
             return;
         }
-        ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment) curEnv;
+        ConfigurableEnvironment configurableEnvironment = (ConfigurableEnvironment)curEnv;
         addToFirst(configurableEnvironment, DynamicConstants.DISABLE_CONFIG_SOURCE_NAME);
         addToFirst(configurableEnvironment, DynamicConstants.PROPERTY_NAME);
     }
@@ -113,18 +113,19 @@ public class OriginConfigCenterDisableListener implements BeanFactoryAware {
     }
 
     private void disableConfigCenter() {
-        ConfigHolder.INSTANCE.getConfigSources().add(new OriginConfigDisableSource(
-                DynamicConstants.DISABLE_CONFIG_SOURCE_NAME));
+        ConfigHolder.INSTANCE.getConfigSources()
+            .add(new OriginConfigDisableSource(DynamicConstants.DISABLE_CONFIG_SOURCE_NAME));
     }
 
     private boolean check() {
         final boolean isNeedClose =
-                Boolean.parseBoolean(environment.getProperty(DynamicConstants.ORIGIN_CONFIG_CENTER_CLOSE_KEY));
+            Boolean.parseBoolean(environment.getProperty(DynamicConstants.ORIGIN_CONFIG_CENTER_CLOSE_KEY));
         return isNeedClose && isShutdown.compareAndSet(false, true);
     }
 
     private void loadClosers() {
-        for (ConfigCenterCloser closer : ServiceLoader.load(ConfigCenterCloser.class)) {
+        for (ConfigCenterCloser closer : ServiceLoader.load(ConfigCenterCloser.class,
+            OriginConfigCenterDisableListener.class.getClassLoader())) {
             configCenterClosers.add(closer);
         }
     }

@@ -96,7 +96,7 @@ public class InjectServiceImpl implements ClassInjectService {
         }
         injectClasses.add(className);
         defineClassCache.put(classLoader, injectClasses);
-        ClassUtils.defineClass(className, classLoader);
+//        ClassUtils.defineClass(className, classLoader);
         LOGGER.fine(String.format(Locale.ENGLISH, "Defines class [%s] for classLoader [%s] success!",
                 className, classLoader));
     }

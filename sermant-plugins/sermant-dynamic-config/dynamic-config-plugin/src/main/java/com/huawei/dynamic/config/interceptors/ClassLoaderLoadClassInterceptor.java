@@ -15,7 +15,7 @@ import java.util.logging.Logger;
  * @author luanwenfei
  * @since 2023-04-28
  */
-public class ClassLoaderInterceptor implements Interceptor {
+public class ClassLoaderLoadClassInterceptor implements Interceptor {
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
     @Override
@@ -27,7 +27,8 @@ public class ClassLoaderInterceptor implements Interceptor {
                 context.skip(ClassLoaderManager.getPluginClassLoader().loadClassOnlySermant(name, false));
                 LOGGER.info("Load class: " + name + " successfully by sermant.");
             } catch (Exception exception) {
-                LOGGER.log(Level.SEVERE, "Can not load class by sermant.", exception);
+                LOGGER.log(Level.SEVERE, "Can not load class by sermant. And then load by " + context.getObject(),
+                    exception);
             }
         }
         return context;

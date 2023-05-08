@@ -273,8 +273,8 @@ public class BufferedAgentBuilder {
      */
     public ResettableClassFileTransformer install(Instrumentation instrumentation) {
         AgentBuilder builder = new Default().disableClassFormatChanges();
-        builder = builder.with(
-            new Compound((classLoader, module) -> new UserDefineClassFileLocator(classLoader), ForClassLoader.STRONG));
+//        builder = builder.with(
+//            new Compound((classLoader, module) -> new UserDefineClassFileLocator(classLoader), ForClassLoader.STRONG));
         for (BuilderAction action : actions) {
             builder = action.process(builder);
         }

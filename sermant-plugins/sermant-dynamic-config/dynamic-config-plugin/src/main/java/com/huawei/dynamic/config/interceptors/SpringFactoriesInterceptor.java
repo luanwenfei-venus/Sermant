@@ -17,6 +17,7 @@
 
 package com.huawei.dynamic.config.interceptors;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.service.ServiceManager;
@@ -54,7 +55,7 @@ public class SpringFactoriesInterceptor extends DynamicConfigSwitchSupport {
      * 初始化加载注入定义
      */
     public SpringFactoriesInterceptor() {
-        for (ClassInjectDefine define : ServiceLoader.load(ClassInjectDefine.class)) {
+        for (ClassInjectDefine define : ServiceLoader.load(ClassInjectDefine.class, ClassLoaderManager.getPluginClassLoader())) {
             if (define.plugin() == Plugin.DYNAMIC_CONFIG_PLUGIN) {
                 CLASS_DEFINES.add(define);
             }

@@ -16,17 +16,17 @@
 
 package com.huaweicloud.sermant.core.plugin.agent.declarer;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
 import com.huaweicloud.sermant.core.plugin.agent.matcher.MethodMatcher;
-import com.huaweicloud.sermant.core.utils.ClassLoaderUtils;
-import com.huaweicloud.sermant.core.utils.JarFileUtils;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -90,9 +90,9 @@ public abstract class InterceptDeclarer {
                 try {
                     return createInterceptors(interceptors, classLoader);
                 } catch (IOException | IllegalAccessException | NoSuchMethodException | InvocationTargetException
-                        | ClassNotFoundException | InstantiationException e) {
-                    LOGGER.warning(String.format(Locale.ROOT, "Unable to create instance of interceptors: [%s]. ",
-                            Arrays.toString(interceptors)));
+                    | ClassNotFoundException | InstantiationException e) {
+                    LOGGER.log(Level.WARNING, String.format(Locale.ROOT,
+                        "Unable to create instance of interceptors:  [%s]. ", Arrays.toString(interceptors)), e);
                 }
                 return new Interceptor[0];
             }
@@ -113,46 +113,22 @@ public abstract class InterceptDeclarer {
      * @throws InstantiationException    实例化失败
      */
     private static Interceptor[] createInterceptors(String[] interceptors, ClassLoader classLoader)
-            throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
-            IllegalAccessException, InstantiationException {
+        throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
+        IllegalAccessException, InstantiationException {
         final ArrayList<Interceptor> interceptorList = new ArrayList<>();
+        if (!ClassLoaderManager.getPluginClassLoader().equals(classLoader)) {
+            // 如果不是PlugClassLoader 则放入类加载器缓存
+            ClassLoaderManager.getPluginClassLoader().appendClassLoader(classLoader);
+        }
+
         for (String interceptor : interceptors) {
-            final Object instance = getInterceptorClass(interceptor, classLoader).newInstance();
+            // final Object instance = getInterceptorClass(interceptor, classLoader).newInstance();
+            final Object instance = ClassLoaderManager.getPluginClassLoader().loadClass(interceptor).newInstance();
             if (instance instanceof Interceptor) {
-                interceptorList.add((Interceptor) instance);
+                interceptorList.add((Interceptor)instance);
             }
         }
         return interceptorList.toArray(new Interceptor[0]);
-    }
-
-    /**
-     * 通过被增强类的类加载器获取拦截器类
-     *
-     * @param interceptor 拦截器全限定名
-     * @param classLoader 被增强类的类加载器
-     * @return 拦截器类
-     * @throws ClassNotFoundException    找不到类
-     * @throws IOException               定义类失败
-     * @throws InvocationTargetException 调用addURL方法失败或调用defineClass方法失败
-     * @throws NoSuchMethodException     找不到addURL方法或defineClass方法
-     * @throws IllegalAccessException    无法访问addURL方法或defineClass方法
-     */
-    private static Class<?> getInterceptorClass(String interceptor, ClassLoader classLoader)
-            throws ClassNotFoundException, IOException, InvocationTargetException, NoSuchMethodException,
-            IllegalAccessException {
-        try {
-            final Class<?> interceptorCls = classLoader.loadClass(interceptor);
-            if (interceptorCls.getClassLoader() == classLoader) {
-                return interceptorCls;
-            } else {
-                return ClassLoaderUtils.defineClass(interceptor, classLoader,
-                        ClassLoaderUtils.getClassResource(ClassLoader.getSystemClassLoader(), interceptor));
-            }
-        } catch (ClassNotFoundException ignored) {
-            ClassLoaderUtils.loadJarFile(classLoader,
-                    JarFileUtils.getJarUrl(ClassLoader.getSystemClassLoader().loadClass(interceptor)));
-            return classLoader.loadClass(interceptor);
-        }
     }
 
     /**

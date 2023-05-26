@@ -35,38 +35,45 @@ import java.util.logging.Logger;
 public class CommonBaseAdviser {
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
-    private CommonBaseAdviser() {
-    }
+    private CommonBaseAdviser() {}
 
     /**
      * 前置触发点
      *
-     * @param context        执行上下文
+     * @param context 执行上下文
      * @param interceptorItr 拦截器双向迭代器
-     * @param beforeHandler  before的异常处理器
+     * @param beforeHandler before的异常处理器
      * @return 执行上下文
-     * @throws Throwable     抛给宿主的异常
+     * @throws Throwable 抛给宿主的异常
      */
     public static ExecuteContext onMethodEnter(ExecuteContext context, ListIterator<Interceptor> interceptorItr,
-            ExceptionHandler beforeHandler) throws Throwable {
+        ExceptionHandler beforeHandler) throws Throwable {
         ExecuteContext newContext = context;
         while (interceptorItr.hasNext()) {
-            final Interceptor interceptor = interceptorItr.next();
-            if (LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.log(Level.FINE, String.format(Locale.ROOT, "Method[%s] had been entered, interceptor is [%s].",
-                    MethodKeyCreator.getMethodKey(context.getMethod()), interceptor.getClass().getName()));
-            }
             try {
-                final ExecuteContext tempContext = interceptor.before(newContext);
-                if (tempContext != null) {
-                    newContext = tempContext;
+                final Interceptor interceptor = interceptorItr.next();
+                if (LOGGER.isLoggable(Level.FINE)) {
+                    LOGGER.log(Level.FINE,
+                        String.format(Locale.ROOT, "Method[%s] had been entered, interceptor is [%s].",
+                            MethodKeyCreator.getMethodKey(context.getMethod()), interceptor.getClass().getName()));
                 }
-                if (newContext.isSkip()) {
-                    return newContext;
+                try {
+                    final ExecuteContext tempContext = interceptor.before(newContext);
+                    if (tempContext != null) {
+                        newContext = tempContext;
+                    }
+                    if (newContext.isSkip()) {
+                        return newContext;
+                    }
+                } catch (Throwable t) {
+                    beforeHandler.handle(context, interceptor, t);
                 }
-            } catch (Throwable t) {
-                beforeHandler.handle(context, interceptor, t);
+            } catch (Exception exception) {
+                LOGGER.log(Level.SEVERE, "A exception occur when method enter.", exception);
+                return newContext;
             }
+
+            // 指定向宿主应用抛出异常
             if (newContext.getThrowableOut() != null) {
                 throw newContext.getThrowableOut();
             }
@@ -77,42 +84,48 @@ public class CommonBaseAdviser {
     /**
      * 后置触发点
      *
-     * @param context        执行上下文
+     * @param context 执行上下文
      * @param interceptorItr 拦截器双向迭代器
      * @param onThrowHandler onThrow的异常处理器
-     * @param afterHandler   after的的异常处理器
+     * @param afterHandler after的的异常处理器
      * @return 执行上下文
-     * @throws Throwable     抛给宿主的异常
+     * @throws Throwable 抛给宿主的异常
      */
     public static ExecuteContext onMethodExit(ExecuteContext context, ListIterator<Interceptor> interceptorItr,
-            ExceptionHandler onThrowHandler, ExceptionHandler afterHandler) throws Throwable {
+        ExceptionHandler onThrowHandler, ExceptionHandler afterHandler) throws Throwable {
         ExecuteContext newContext = context;
         while (interceptorItr.hasPrevious()) {
-            final Interceptor interceptor = interceptorItr.previous();
-            if (LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.log(Level.FINE, String.format(Locale.ROOT, "Method[%s] had been exited, interceptor is [%s].",
-                    MethodKeyCreator.getMethodKey(context.getMethod()), interceptor.getClass().getName()));
-            }
-            if (newContext.getThrowable() != null && onThrowHandler != null) {
+            try {
+                final Interceptor interceptor = interceptorItr.previous();
+                if (LOGGER.isLoggable(Level.FINE)) {
+                    LOGGER.log(Level.FINE,
+                        String.format(Locale.ROOT, "Method[%s] had been exited, interceptor is [%s].",
+                            MethodKeyCreator.getMethodKey(context.getMethod()), interceptor.getClass().getName()));
+                }
+                if (newContext.getThrowable() != null && onThrowHandler != null) {
+                    try {
+                        final ExecuteContext tempContext = interceptor.onThrow(newContext);
+                        if (tempContext != null) {
+                            newContext = tempContext;
+                        }
+                    } catch (Throwable t) {
+                        onThrowHandler.handle(newContext, interceptor, t);
+                    }
+                    if (newContext.getThrowableOut() != null) {
+                        throw newContext.getThrowableOut();
+                    }
+                }
                 try {
-                    final ExecuteContext tempContext = interceptor.onThrow(newContext);
+                    final ExecuteContext tempContext = interceptor.after(newContext);
                     if (tempContext != null) {
                         newContext = tempContext;
                     }
                 } catch (Throwable t) {
-                    onThrowHandler.handle(newContext, interceptor, t);
+                    afterHandler.handle(newContext, interceptor, t);
                 }
-                if (newContext.getThrowableOut() != null) {
-                    throw newContext.getThrowableOut();
-                }
-            }
-            try {
-                final ExecuteContext tempContext = interceptor.after(newContext);
-                if (tempContext != null) {
-                    newContext = tempContext;
-                }
-            } catch (Throwable t) {
-                afterHandler.handle(newContext, interceptor, t);
+            } catch (Exception exception) {
+                LOGGER.log(Level.SEVERE, "A exception occur when method exit.", exception);
+                return newContext;
             }
             if (newContext.getThrowableOut() != null) {
                 throw newContext.getThrowableOut();

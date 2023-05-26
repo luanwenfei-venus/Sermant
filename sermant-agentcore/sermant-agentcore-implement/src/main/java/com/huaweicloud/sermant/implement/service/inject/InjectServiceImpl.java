@@ -96,7 +96,7 @@ public class InjectServiceImpl implements ClassInjectService {
         }
         injectClasses.add(className);
         defineClassCache.put(classLoader, injectClasses);
-        ClassUtils.defineClass(className, classLoader);
+        // todo:新类加载器架构下不再需要 ClassUtils.defineClass(className, classLoader);
         LOGGER.fine(String.format(Locale.ENGLISH, "Defines class [%s] for classLoader [%s] success!",
                 className, classLoader));
     }

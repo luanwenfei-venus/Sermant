@@ -16,6 +16,7 @@
 
 package com.huaweicloud.sermant.core.plugin.agent.collector;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDeclarer;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDescription;
 
@@ -31,11 +32,11 @@ import java.util.ServiceLoader;
 public class DefaultPluginCollector implements PluginCollector {
     @Override
     public Iterable<? extends PluginDeclarer> getDeclarers() {
-        return ServiceLoader.load(PluginDeclarer.class);
+        return ServiceLoader.load(PluginDeclarer.class, ClassLoaderManager.getPluginClassLoader());
     }
 
     @Override
     public Iterable<? extends PluginDescription> getDescriptions() {
-        return ServiceLoader.load(PluginDescription.class);
+        return ServiceLoader.load(PluginDescription.class, ClassLoaderManager.getPluginClassLoader());
     }
 }

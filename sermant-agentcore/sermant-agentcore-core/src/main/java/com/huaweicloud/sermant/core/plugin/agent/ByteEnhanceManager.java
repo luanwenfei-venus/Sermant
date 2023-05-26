@@ -37,6 +37,7 @@ public class ByteEnhanceManager {
      * @param instrumentation Instrumentation对象
      */
     public static void enhance(Instrumentation instrumentation) {
-        BufferedAgentBuilder.build().addPlugins(PluginCollectorManager.getPlugins()).install(instrumentation);
+        BufferedAgentBuilder.build().addClassLoaderEnhance().addPlugins(PluginCollectorManager.getPlugins())
+            .install(instrumentation);
     }
 }

@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package com.huawei.sermant.premain.common;
+package com.huaweicloud.sermant.premain.common;
 
-import com.huaweicloud.sermant.core.common.CommonConstant;
 
 import java.io.File;
 
@@ -47,6 +46,15 @@ public class PathDeclarer {
      */
     public static String getCorePath() {
         return getAgentPath() + File.separatorChar + "core";
+    }
+
+    /**
+     * 获取引导包目录
+     *
+     * @return 引导包目录
+     */
+    public static String getGodLibPath() {
+        return getAgentPath() + File.separatorChar + "god";
     }
 
     /**
@@ -91,7 +99,7 @@ public class PathDeclarer {
      * @return 启动配置路径
      */
     public static String getBootConfigPath() {
-        return getConfigDirPath() + File.separatorChar + CommonConstant.BOOTSTRAP_CONFIG_FILE_NAME;
+        return getConfigDirPath() + File.separatorChar + SermantConstant.BOOTSTRAP_CONFIG_FILE_NAME;
     }
 
     /**
@@ -100,7 +108,7 @@ public class PathDeclarer {
      * @return agent core的统一配置
      */
     public static String getConfigPath() {
-        return getConfigDirPath() + File.separatorChar + CommonConstant.CORE_CONFIG_FILE_NAME;
+        return getConfigDirPath() + File.separatorChar + SermantConstant.CORE_CONFIG_FILE_NAME;
     }
 
     /**
@@ -109,7 +117,7 @@ public class PathDeclarer {
      * @return 插件设置配置
      */
     public static String getPluginSettingPath() {
-        return getConfigDirPath() + File.separatorChar + CommonConstant.PLUGIN_SETTING_FILE_NAME;
+        return getConfigDirPath() + File.separatorChar + SermantConstant.PLUGIN_SETTING_FILE_NAME;
     }
 
     /**
@@ -118,6 +126,6 @@ public class PathDeclarer {
      * @return logback日志配置
      */
     public static String getLogbackSettingPath() {
-        return getConfigDirPath() + File.separatorChar + CommonConstant.LOG_SETTING_FILE_NAME;
+        return getConfigDirPath() + File.separatorChar + SermantConstant.LOG_SETTING_FILE_NAME;
     }
 }

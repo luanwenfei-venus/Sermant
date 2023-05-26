@@ -19,6 +19,7 @@ package com.huawei.dynamic.config.inject;
 
 import com.huawei.dynamic.config.DynamicConfiguration;
 
+import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.plugin.config.PluginConfigManager;
 import com.huaweicloud.sermant.core.service.inject.ClassInjectDefine;
 import com.huaweicloud.sermant.core.service.inject.ClassInjectDefine.Plugin;

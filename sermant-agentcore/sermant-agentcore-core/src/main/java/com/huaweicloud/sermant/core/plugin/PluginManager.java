@@ -21,7 +21,7 @@ import com.huaweicloud.sermant.core.common.BootArgsIndexer;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
 import com.huaweicloud.sermant.core.exception.SchemaException;
-import com.huaweicloud.sermant.core.plugin.classloader.PluginClassLoader;
+import com.huaweicloud.sermant.core.plugin.classloader.ServiceClassLoader;
 import com.huaweicloud.sermant.core.plugin.common.PluginConstant;
 import com.huaweicloud.sermant.core.plugin.common.PluginSchemaValidator;
 import com.huaweicloud.sermant.core.plugin.config.PluginConfigManager;
@@ -81,8 +81,8 @@ public class PluginManager {
             try {
                 initPlugin(pluginName, pluginPackage, instrumentation);
             } catch (Exception ex) {
-                LOGGER.log(Level.SEVERE, String.format(Locale.ENGLISH,
-                        "load plugin failed, plugin name: %s", pluginName), ex);
+                LOGGER.log(Level.SEVERE,
+                        String.format(Locale.ENGLISH, "load plugin failed, plugin name: %s", pluginName), ex);
             }
         }
         return true;
@@ -118,8 +118,8 @@ public class PluginManager {
     private static void initPlugin(String pluginName, String pluginPackage, Instrumentation instrumentation) {
         final String pluginPath = pluginPackage + File.separatorChar + pluginName;
         if (!new File(pluginPath).exists()) {
-            LOGGER.severe(String.format(Locale.ROOT,
-                    "Plugin directory %s does not exist, so skip initializing %s. ", pluginPath, pluginName));
+            LOGGER.severe(String.format(Locale.ROOT, "Plugin directory %s does not exist, so skip initializing %s. ",
+                    pluginPath, pluginName));
             return;
         }
         doInitPlugin(pluginName, pluginPath, instrumentation);
@@ -215,9 +215,9 @@ public class PluginManager {
     private static ClassLoader loadServices(String pluginName, File serviceDir) {
         final URL[] urls = toUrls(pluginName, listJars(serviceDir));
         if (urls.length > 0) {
-            return new PluginClassLoader(urls, ClassLoaderManager.getCommonClassLoader());
+            return new ServiceClassLoader(urls, ClassLoaderManager.getPluginClassLoader());
         }
-        return ClassLoader.getSystemClassLoader();
+        return ClassLoaderManager.getPluginClassLoader();
     }
 
     /**
@@ -302,7 +302,12 @@ public class PluginManager {
             processByJarFile(pluginName, jar, true, new JarFileConsumer() {
                 @Override
                 public void consume(JarFile jarFile) {
-                    instrumentation.appendToSystemClassLoaderSearch(jarFile);
+                    try {
+                        ClassLoaderManager.getPluginClassLoader()
+                                .appendUrl(new File(jarFile.getName()).toURI().toURL());
+                    } catch (MalformedURLException e) {
+                        LOGGER.log(Level.SEVERE, "Add plugin path to pluginClassLoader fail, exception: ", e);
+                    }
                 }
             });
         }

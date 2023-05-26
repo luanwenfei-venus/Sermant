@@ -84,7 +84,7 @@ public abstract class ConfigManager {
      */
     public static synchronized void initialize(Map<String, Object> args) {
         argsMap = args;
-        loadConfig(BootArgsIndexer.getConfigFile(), BaseConfig.class, ClassLoader.getSystemClassLoader());
+        loadConfig(BootArgsIndexer.getConfigFile(), BaseConfig.class, ClassLoaderManager.getSermantClassLoader());
     }
 
     /**

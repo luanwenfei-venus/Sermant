@@ -17,6 +17,7 @@
 package com.huaweicloud.sermant.core.plugin.agent.template;
 
 import com.huaweicloud.sermant.core.common.LoggerFactory;
+import com.huaweicloud.sermant.core.plugin.agent.adviser.AdviserInterface;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
 
@@ -32,70 +33,65 @@ import java.util.logging.Logger;
  * @version 1.0.0
  * @since 2022-01-24
  */
-public class CommonMethodAdviser {
+public class CommonMethodAdviser implements AdviserInterface {
     /**
      * 日志
      */
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
-    private CommonMethodAdviser() {
-    }
+    public CommonMethodAdviser() {}
 
     /**
      * 输出错误日志
      *
-     * @param scene       场景
-     * @param context     执行上下文
+     * @param scene 场景
+     * @param context 执行上下文
      * @param interceptor 拦截器对象
-     * @param throwable   错误对象
+     * @param throwable 错误对象
      */
-    private static void logError(String scene, ExecuteContext context, Interceptor interceptor, Throwable throwable) {
-        LOGGER.log(Level.SEVERE, String.format(Locale.ROOT, "An error occurred %s [%s] in interceptor [%s]: ",
-                scene, MethodKeyCreator.getMethodKey(context.getMethod()), interceptor.getClass().getName()),
-            throwable);
+    private void logError(String scene, ExecuteContext context, Interceptor interceptor, Throwable throwable) {
+        LOGGER.log(Level.SEVERE, String.format(Locale.ROOT, "An error occurred %s [%s] in interceptor [%s]: ", scene,
+            MethodKeyCreator.getMethodKey(context.getMethod()), interceptor.getClass().getName()), throwable);
     }
 
     /**
      * 调用方法的前置触发点
      *
-     * @param context        执行上下文
+     * @param context 执行上下文
      * @param interceptorItr 拦截器双向迭代器
      * @return 执行上下文
-     * @throws Throwable     抛给宿主的异常
+     * @throws Throwable 抛给宿主的异常
      */
-    public static ExecuteContext onMethodEnter(ExecuteContext context, ListIterator<Interceptor> interceptorItr)
+    public ExecuteContext onMethodEnter(ExecuteContext context, ListIterator<Interceptor> interceptorItr)
         throws Throwable {
-        return CommonBaseAdviser.onMethodEnter(context, interceptorItr,
-                new CommonBaseAdviser.ExceptionHandler() {
-                    @Override
-                    public void handle(ExecuteContext context, Interceptor interceptor, Throwable throwable) {
-                        logError("before executing", context, interceptor, throwable);
-                    }
-                });
+        return CommonBaseAdviser.onMethodEnter(context, interceptorItr, new CommonBaseAdviser.ExceptionHandler() {
+            @Override
+            public void handle(ExecuteContext context, Interceptor interceptor, Throwable throwable) {
+                logError("before executing", context, interceptor, throwable);
+            }
+        });
     }
 
     /**
      * 调用方法的后置触发点
      *
-     * @param context        执行上下文
+     * @param context 执行上下文
      * @param interceptorItr 拦截器双向迭代器
      * @return 执行上下文
-     * @throws Throwable     抛给宿主的异常
+     * @throws Throwable 抛给宿主的异常
      */
-    public static ExecuteContext onMethodExit(ExecuteContext context, ListIterator<Interceptor> interceptorItr)
+    public ExecuteContext onMethodExit(ExecuteContext context, ListIterator<Interceptor> interceptorItr)
         throws Throwable {
-        return CommonBaseAdviser.onMethodExit(context, interceptorItr,
-                new CommonBaseAdviser.ExceptionHandler() {
-                    @Override
-                    public void handle(ExecuteContext context, Interceptor interceptor, Throwable throwable) {
-                        logError("while handling error from", context, interceptor, throwable);
-                    }
-                },
-                new CommonBaseAdviser.ExceptionHandler() {
-                    @Override
-                    public void handle(ExecuteContext context, Interceptor interceptor, Throwable throwable) {
-                        logError("after executing", context, interceptor, throwable);
-                    }
-                });
+        return CommonBaseAdviser.onMethodExit(context, interceptorItr, new CommonBaseAdviser.ExceptionHandler() {
+            @Override
+            public void handle(ExecuteContext context, Interceptor interceptor, Throwable throwable) {
+                logError("while handling error from", context, interceptor, throwable);
+            }
+        }, new CommonBaseAdviser.ExceptionHandler() {
+            @Override
+            public void handle(ExecuteContext context, Interceptor interceptor, Throwable throwable) {
+                logError("after executing", context, interceptor, throwable);
+            }
+        });
     }
 }

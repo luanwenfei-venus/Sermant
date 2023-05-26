@@ -63,7 +63,7 @@ public enum ConfigHolder {
     }
 
     private void loadConfigSources() {
-        for (ConfigSource configSource : ServiceLoader.load(ConfigSource.class)) {
+        for (ConfigSource configSource : ServiceLoader.load(ConfigSource.class,this.getClass().getClassLoader())) {
             if (configSource.isEnabled()) {
                 configSources.add(configSource);
             }

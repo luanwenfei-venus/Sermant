@@ -22,16 +22,22 @@ import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.config.ConfigManager;
 import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
 import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig;
+import com.huaweicloud.sermant.core.plugin.agent.declarer.AbstractPluginDescription;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDescription;
-import com.huaweicloud.sermant.core.plugin.classloader.PluginClassLoader;
+import com.huaweicloud.sermant.core.plugin.agent.enhance.ClassLoaderDeclarer;
+import com.huaweicloud.sermant.core.plugin.agent.transformer.DefaultTransformer;
+import com.huaweicloud.sermant.core.plugin.classloader.ServiceClassLoader;
 import com.huaweicloud.sermant.core.utils.FileUtils;
 
-import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
+import net.bytebuddy.agent.builder.AgentBuilder.Default;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.description.type.TypeList.Generic;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.ClassFileLocator.Resolution.Illegal;
 import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.dynamic.DynamicType.Builder;
 import net.bytebuddy.utility.JavaModule;
 
 import java.io.ByteArrayOutputStream;
@@ -49,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -79,8 +86,7 @@ public class BufferedAgentBuilder {
      */
     private final List<BuilderAction> actions = new ArrayList<>();
 
-    private BufferedAgentBuilder() {
-    }
+    private BufferedAgentBuilder() {}
 
     /**
      * 创建{@link BufferedAgentBuilder}并依据配置设置基础操作：
@@ -123,7 +129,7 @@ public class BufferedAgentBuilder {
 
     /**
      * 设置扫描的过滤规则
-     * <p>注意，数组类型，8中基础类型，以及{@link PluginClassLoader},{@link FrameworkClassLoader}加载的类默认不增强，直接被过滤
+     * <p>注意，数组类型，8中基础类型，以及{@link ServiceClassLoader},{@link FrameworkClassLoader}加载的类默认不增强，直接被过滤
      * <p>其他类若符合配置中{@link AgentConfig#getIgnoredPrefixes}指定的前缀之一，则被过滤
      *
      * @return BufferedAgentBuilder本身
@@ -152,38 +158,38 @@ public class BufferedAgentBuilder {
             @Override
             public AgentBuilder process(AgentBuilder builder) {
                 return builder
-                        .with(new AgentBuilder.Listener.StreamWriting(new PrintStream(new ByteArrayOutputStream() {
-                            private final byte[] separatorBytes =
-                                    System.lineSeparator().getBytes(CommonConstant.DEFAULT_CHARSET);
+                    .with(new AgentBuilder.Listener.StreamWriting(new PrintStream(new ByteArrayOutputStream() {
+                        private final byte[] separatorBytes =
+                            System.lineSeparator().getBytes(CommonConstant.DEFAULT_CHARSET);
 
-                            private final int separatorLength = separatorBytes.length;
+                        private final int separatorLength = separatorBytes.length;
 
-                            @Override
-                            public void flush() {
-                                if (count < separatorLength) {
+                        @Override
+                        public void flush() {
+                            if (count < separatorLength) {
+                                return;
+                            }
+                            for (int i = separatorLength - 1; i >= 0; i--) {
+                                if (buf[count + i - separatorLength] != separatorBytes[i]) {
                                     return;
                                 }
-                                for (int i = separatorLength - 1; i >= 0; i--) {
-                                    if (buf[count + i - separatorLength] != separatorBytes[i]) {
-                                        return;
-                                    }
-                                }
-                                String enhanceLog = new String(Arrays.copyOf(buf, count - separatorLength));
-                                logAndCollectEvent(enhanceLog);
-                                reset();
                             }
+                            String enhanceLog = new String(Arrays.copyOf(buf, count - separatorLength));
+                            logAndCollectEvent(enhanceLog);
+                            reset();
+                        }
 
-                            private void logAndCollectEvent(String enhanceLog) {
-                                if (enhanceLog.contains(CommonConstant.ERROR)) {
-                                    FrameworkEventCollector.getInstance().collectTransformFailureEvent(enhanceLog);
-                                    return;
-                                }
-                                if (enhanceLog.contains(CommonConstant.TRANSFORM)) {
-                                    FrameworkEventCollector.getInstance().collectTransformSuccessEvent(enhanceLog);
-                                }
-                                LOGGER.info(enhanceLog);
+                        private void logAndCollectEvent(String enhanceLog) {
+                            if (enhanceLog.contains(CommonConstant.ERROR)) {
+                                FrameworkEventCollector.getInstance().collectTransformFailureEvent(enhanceLog);
+                                return;
                             }
-                        }, true)));
+                            if (enhanceLog.contains(CommonConstant.TRANSFORM)) {
+                                FrameworkEventCollector.getInstance().collectTransformSuccessEvent(enhanceLog);
+                            }
+                            LOGGER.info(enhanceLog);
+                        }
+                    }, true)));
             }
         });
     }
@@ -209,12 +215,10 @@ public class BufferedAgentBuilder {
         String currentTime = LocalDateTime.now().format(formatter);
         if (outputPath == null || outputPath.isEmpty()) {
             outputDirectory = Paths.get(FileUtils.getAgentPath())
-                    .resolve(CommonConstant.ENHANCED_CLASS_OUTPUT_PARENT_DIR)
-                    .resolve(currentTime);
+                .resolve(CommonConstant.ENHANCED_CLASS_OUTPUT_PARENT_DIR).resolve(currentTime);
         } else {
-            outputDirectory = Paths.get(outputPath)
-                    .resolve(CommonConstant.ENHANCED_CLASS_OUTPUT_PARENT_DIR)
-                    .resolve(currentTime);
+            outputDirectory =
+                Paths.get(outputPath).resolve(CommonConstant.ENHANCED_CLASS_OUTPUT_PARENT_DIR).resolve(currentTime);
         }
         final File file;
         try {
@@ -225,13 +229,12 @@ public class BufferedAgentBuilder {
         }
         return addAction(builder -> builder.with(new AgentBuilder.Listener.Adapter() {
             @Override
-            public void onTransformation(TypeDescription typeDescription, ClassLoader classLoader,
-                    JavaModule module, boolean loaded, DynamicType dynamicType) {
+            public void onTransformation(TypeDescription typeDescription, ClassLoader classLoader, JavaModule module,
+                boolean loaded, DynamicType dynamicType) {
                 try {
                     dynamicType.saveIn(file);
                 } catch (IOException e) {
-                    LOGGER.warning(String.format(
-                            "Save class [%s] byte code failed. ", typeDescription.getTypeName()));
+                    LOGGER.warning(String.format("Save class [%s] byte code failed. ", typeDescription.getTypeName()));
                 }
             }
         }));
@@ -257,6 +260,43 @@ public class BufferedAgentBuilder {
     }
 
     /**
+     * 可针对指定类加载器进行增强，指定类优先通过Sermant的PluginClassLoader进行加载
+     *
+     * @return BufferedAgentBuilder本身
+     */
+    public BufferedAgentBuilder addClassLoaderEnhance() {
+        return addAction(new BuilderAction() {
+            @Override
+            public AgentBuilder process(AgentBuilder builder) {
+                PluginDescription pluginDescription = new AbstractPluginDescription() {
+                    final ClassLoaderDeclarer classLoaderDeclarer = new ClassLoaderDeclarer();
+
+                    @Override
+                    public Builder<?> transform(Builder<?> builder, TypeDescription typeDescription,
+                        ClassLoader classLoader, JavaModule module) {
+                        return new DefaultTransformer(classLoaderDeclarer.getInterceptDeclarers(classLoader))
+                            .transform(builder, typeDescription, classLoader, module);
+                    }
+
+                    @Override
+                    public boolean matches(TypeDescription target) {
+                        try {
+                            return classLoaderDeclarer.getClassMatcher().matches(target);
+                        } catch (Exception exception) {
+                            LOGGER.log(Level.WARNING, "Exception occur when math target: " + target.getActualName(),
+                                exception);
+                            return false;
+                        }
+                    }
+                };
+                AgentBuilder newBuilder = builder;
+                newBuilder = newBuilder.type(pluginDescription).transform(pluginDescription);
+                return newBuilder;
+            }
+        });
+    }
+
+    /**
      * 添加行动
      *
      * @param action 行动
@@ -274,11 +314,15 @@ public class BufferedAgentBuilder {
      * @return 安装结果，可重置的转换器，若无类元信息改动，调用其reset方法即可重置
      */
     public ResettableClassFileTransformer install(Instrumentation instrumentation) {
-        AgentBuilder builder = new AgentBuilder.Default(new ByteBuddy());
+        AgentBuilder builder = new Default().disableClassFormatChanges();
+        /**
+         * todo：
+         * builder = builder.with(
+         * new Compound((classLoader, module) -> new UserDefineClassFileLocator(classLoader), ForClassLoader.STRONG));
+         */
         for (BuilderAction action : actions) {
             builder = action.process(builder);
         }
-        builder.disableClassFormatChanges();
         return builder.installOn(instrumentation);
     }
 
@@ -303,9 +347,9 @@ public class BufferedAgentBuilder {
 
         @Override
         public boolean matches(TypeDescription typeDesc, ClassLoader classLoader, JavaModule javaModule,
-                Class<?> classBeingRedefined, ProtectionDomain protectionDomain) {
+            Class<?> classBeingRedefined, ProtectionDomain protectionDomain) {
             return isArrayOrPrimitive(typeDesc) || checkClassLoader(typeDesc, classLoader)
-                    || isIgnoredPrefixes(typeDesc) || isIgnoredInterfaces(typeDesc);
+                || isIgnoredPrefixes(typeDesc) || isIgnoredInterfaces(typeDesc);
         }
 
         private boolean isArrayOrPrimitive(TypeDescription typeDesc) {
@@ -316,7 +360,7 @@ public class BufferedAgentBuilder {
             if (classLoader instanceof FrameworkClassLoader) {
                 return true;
             }
-            if (classLoader instanceof PluginClassLoader) {
+            if (classLoader instanceof ServiceClassLoader) {
                 return !serviceInjectList.contains(typeDesc.getTypeName());
             }
             return false;
@@ -364,5 +408,33 @@ public class BufferedAgentBuilder {
          * @return 构建器
          */
         AgentBuilder process(AgentBuilder builder);
+    }
+
+    static class UserDefineClassFileLocator implements ClassFileLocator {
+        private final ClassLoader classLoader;
+
+        protected UserDefineClassFileLocator(ClassLoader classLoader) {
+            this.classLoader = classLoader;
+        }
+
+        @Override
+        public Resolution locate(String name) throws IOException {
+            try {
+                if (classLoader == null) {
+                    return ForClassLoader.of(null).locate(name);
+                }
+                ClassLoader realLoader = classLoader.loadClass(name).getClassLoader();
+                return ForClassLoader.of(realLoader).locate(name);
+            } catch (ClassNotFoundException exception) {
+                LOGGER.log(Level.WARNING, "Cannot load class {0}, by classloader {1}",
+                    new Object[] {name, classLoader});
+            }
+            return new Illegal(name);
+        }
+
+        @Override
+        public void close() throws IOException {
+
+        }
     }
 }

@@ -17,7 +17,9 @@
 package com.huaweicloud.sermant.core.classloader;
 
 import com.huaweicloud.sermant.core.common.CommonConstant;
+import com.huaweicloud.sermant.core.plugin.classloader.PluginClassLoader;
 import com.huaweicloud.sermant.core.utils.FileUtils;
+import com.huaweicloud.sermant.god.common.SermantClassLoader;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -33,12 +35,14 @@ import java.util.Map;
  * @since 2022-06-20
  */
 public class ClassLoaderManager {
+    private static final SermantClassLoader SERMANT_CLASS_LOADER =
+        (SermantClassLoader)ClassLoaderManager.class.getClassLoader();
+
     private static FrameworkClassLoader frameworkClassLoader;
 
-    private static CommonClassLoader commonClassLoader;
+    private static PluginClassLoader pluginClassLoader;
 
-    private ClassLoaderManager() {
-    }
+    private ClassLoaderManager() {}
 
     /**
      * Init custom classloaders.
@@ -47,8 +51,8 @@ public class ClassLoaderManager {
      * @throws MalformedURLException MalformedURLException
      */
     public static void init(Map<String, Object> argsMap) throws MalformedURLException {
-        initCommonClassLoader(argsMap.get(CommonConstant.COMMON_DEPENDENCY_DIR_KEY).toString());
         initFrameworkClassLoader(argsMap.get(CommonConstant.CORE_IMPLEMENT_DIR_KEY).toString());
+        pluginClassLoader = new PluginClassLoader(new URL[0], SERMANT_CLASS_LOADER);
     }
 
     /**
@@ -60,18 +64,17 @@ public class ClassLoaderManager {
         return frameworkClassLoader;
     }
 
-    /**
-     * For getting CommonClassLoader
-     *
-     * @return A commonClassLoader that has been initialized.
-     */
-    public static CommonClassLoader getCommonClassLoader() {
-        return commonClassLoader;
+    public static PluginClassLoader getPluginClassLoader() {
+        return pluginClassLoader;
+    }
+
+    public static SermantClassLoader getSermantClassLoader() {
+        return SERMANT_CLASS_LOADER;
     }
 
     private static void initFrameworkClassLoader(String path) throws MalformedURLException {
         URL[] coreImplementUrls = listCoreImplementUrls(path);
-        frameworkClassLoader = new FrameworkClassLoader(coreImplementUrls, commonClassLoader);
+        frameworkClassLoader = new FrameworkClassLoader(coreImplementUrls, SERMANT_CLASS_LOADER);
     }
 
     private static URL[] listCoreImplementUrls(String coreImplementPath) throws MalformedURLException {
@@ -80,7 +83,7 @@ public class ClassLoaderManager {
             throw new RuntimeException("core implement directory is not exist or is not directory.");
         }
         File[] jars = coreImplementDir.listFiles((file, name) -> name.endsWith(".jar"));
-        if (jars == null || jars.length <= 0) {
+        if (jars == null || jars.length == 0) {
             throw new RuntimeException("core implement directory is empty");
         }
         List<URL> urlList = new ArrayList<>();
@@ -88,11 +91,6 @@ public class ClassLoaderManager {
             urlList.add(jar.toURI().toURL());
         }
         return urlList.toArray(new URL[0]);
-    }
-
-    private static void initCommonClassLoader(String path) throws MalformedURLException {
-        URL[] commonLibUrls = listCommonLibUrls(path);
-        commonClassLoader = new CommonClassLoader(commonLibUrls);
     }
 
     private static URL[] listCommonLibUrls(String commonLibPath) throws MalformedURLException {

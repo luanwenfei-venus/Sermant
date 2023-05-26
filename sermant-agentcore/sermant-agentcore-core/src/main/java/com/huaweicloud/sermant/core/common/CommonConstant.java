@@ -142,6 +142,11 @@ public class CommonConstant {
      */
     public static final String ENHANCED_CLASS_OUTPUT_PARENT_DIR = "enhancedClasses";
 
+    public static final String[] IGNORE_PREFIXES =
+        new String[] {"com.huawei.sermant", "com.huaweicloud.sermant", "com.huawei.dynamic.config",
+            "com.huawei.flowcontrol", "com.huaweicloud.loadbalancer", "com.huawei.monitor", "com.huawei.dubbo.registry",
+            "com.huawei.registry", "com.huaweicloud.visibility", "com.huawei.discovery", "sermant.plugin.flowcontrol"};
+
     private CommonConstant() {
     }
 }

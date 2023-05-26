@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package com.huawei.sermant.premain.common;
+package com.huaweicloud.sermant.premain.common;
 
-import com.huaweicloud.sermant.core.common.CommonConstant;
-import com.huaweicloud.sermant.core.common.LoggerFactory;
-import com.huaweicloud.sermant.core.utils.StringUtils;
+import static com.huaweicloud.sermant.premain.AgentPremain.getLogger;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -37,7 +35,7 @@ import java.util.logging.Logger;
  * @since 2021-11-12
  */
 public abstract class BootArgsBuilder {
-    private static final Logger LOGGER = LoggerFactory.getLogger();
+    private static final Logger LOGGER = getLogger();
 
     /**
      * 构建启动参数
@@ -85,7 +83,7 @@ public abstract class BootArgsBuilder {
             properties.load(configStream);
         } catch (IOException ioException) {
             LOGGER.severe(String.format(Locale.ROOT, "Exception occurs when close config InputStream , %s .",
-                    ioException.getMessage()));
+                ioException.getMessage()));
         }
         return properties;
     }
@@ -109,17 +107,17 @@ public abstract class BootArgsBuilder {
      * @param configMap 配置集
      */
     private static void addNotNullEntries(Map<String, Object> argsMap, Properties configMap) {
-        String key = CommonConstant.APP_NAME_KEY;
+        String key = SermantConstant.APP_NAME_KEY;
         if (!argsMap.containsKey(key)) {
             final String value = getCommonValue(key, configMap);
             argsMap.put(key, value == null ? "default" : value);
         }
-        key = CommonConstant.SERVICE_NAME_KEY;
+        key = SermantConstant.SERVICE_NAME_KEY;
         if (!argsMap.containsKey(key)) {
             final String value = getCommonValue(key, configMap);
             argsMap.put(key, value == null ? "default" : value);
         }
-        key = CommonConstant.APP_TYPE_KEY;
+        key = SermantConstant.APP_TYPE_KEY;
         if (!argsMap.containsKey(key)) {
             final String value = getCommonValue(key, configMap);
             argsMap.put(key, value == null ? "default" : value);
@@ -134,10 +132,10 @@ public abstract class BootArgsBuilder {
      */
     private static void addNormalEntries(Map<String, Object> argsMap, Properties configMap) {
         for (Object key : configMap.keySet()) {
-            if (!argsMap.containsKey((String) key)) {
-                final String value = configMap.getProperty((String) key);
+            if (!argsMap.containsKey((String)key)) {
+                final String value = configMap.getProperty((String)key);
                 if (value != null) {
-                    argsMap.put((String) key, getActualValue(value));
+                    argsMap.put((String)key, getActualValue(value));
                 }
             }
         }
@@ -159,10 +157,10 @@ public abstract class BootArgsBuilder {
             final String defaultValue = separatorIndex >= 0 ? envKey.substring(separatorIndex + 1) : "";
 
             // 优先级为环境变量 > 系统变量
-            if (!StringUtils.isBlank(System.getenv(key))) {
+            if (isNotBlank(System.getenv(key))) {
                 return System.getenv(key);
             }
-            if (!StringUtils.isBlank(System.getProperty(key))) {
+            if (isNotBlank(System.getProperty(key))) {
                 return System.getProperty(key);
             }
             return defaultValue;
@@ -176,12 +174,31 @@ public abstract class BootArgsBuilder {
      * @param argsMap 参数集
      */
     private static void addPathEntries(Map<String, Object> argsMap) {
-        argsMap.put(CommonConstant.AGENT_ROOT_DIR_KEY, PathDeclarer.getAgentPath());
-        argsMap.put(CommonConstant.CORE_IMPLEMENT_DIR_KEY, PathDeclarer.getImplementPath());
-        argsMap.put(CommonConstant.CORE_CONFIG_FILE_KEY, PathDeclarer.getConfigPath());
-        argsMap.put(CommonConstant.PLUGIN_SETTING_FILE_KEY, PathDeclarer.getPluginSettingPath());
-        argsMap.put(CommonConstant.PLUGIN_PACKAGE_DIR_KEY, PathDeclarer.getPluginPackagePath());
-        argsMap.put(CommonConstant.LOG_SETTING_FILE_KEY, PathDeclarer.getLogbackSettingPath());
-        argsMap.put(CommonConstant.COMMON_DEPENDENCY_DIR_KEY, PathDeclarer.getCommonLibPath());
+        argsMap.put(SermantConstant.AGENT_ROOT_DIR_KEY, PathDeclarer.getAgentPath());
+        argsMap.put(SermantConstant.CORE_IMPLEMENT_DIR_KEY, PathDeclarer.getImplementPath());
+        argsMap.put(SermantConstant.CORE_CONFIG_FILE_KEY, PathDeclarer.getConfigPath());
+        argsMap.put(SermantConstant.PLUGIN_SETTING_FILE_KEY, PathDeclarer.getPluginSettingPath());
+        argsMap.put(SermantConstant.PLUGIN_PACKAGE_DIR_KEY, PathDeclarer.getPluginPackagePath());
+        argsMap.put(SermantConstant.LOG_SETTING_FILE_KEY, PathDeclarer.getLogbackSettingPath());
+        argsMap.put(SermantConstant.COMMON_DEPENDENCY_DIR_KEY, PathDeclarer.getCommonLibPath());
+    }
+
+    /**
+     * isNotBlank
+     *
+     * @param charSequence charSequence
+     * @return boolean
+     */
+    public static boolean isNotBlank(final CharSequence charSequence) {
+        int charSequenceLen = charSequence == null ? 0 : charSequence.length();
+        if (charSequenceLen == 0) {
+            return false;
+        }
+        for (int i = 0; i < charSequenceLen; i++) {
+            if (!Character.isWhitespace(charSequence.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 }

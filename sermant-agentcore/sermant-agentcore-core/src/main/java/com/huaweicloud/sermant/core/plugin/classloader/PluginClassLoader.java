@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2021 Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (C) 2023-2023 Huawei Technologies Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,71 +16,37 @@
 
 package com.huaweicloud.sermant.core.plugin.classloader;
 
-import com.huaweicloud.sermant.core.common.BootArgsIndexer;
 import com.huaweicloud.sermant.core.common.CommonConstant;
-import com.huaweicloud.sermant.core.config.ConfigManager;
-import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig;
 
-import java.io.File;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.ArrayList;
 
 /**
- * 插件类加载器，用于加载插件服务包
+ * 加载插件主模块的类加载器
  *
- * @author HapThorin
- * @version 1.0.0
- * @since 2021-11-12
+ * @author luanwenfei
+ * @since 2023-04-27
  */
 public class PluginClassLoader extends URLClassLoader {
-    /**
-     * 不优先使用PluginClassLoader加载的全限定名前缀
-     */
-    private final Set<String> ignoredPrefixes = ConfigManager.getConfig(AgentConfig.class).getIgnoredPrefixes();
-
-    /**
-     * 对ClassLoader内部已加载的Class的管理
-     */
-    private final Map<String, Class<?>> pluginClassMap = new HashMap<>();
+    private final ArrayList<ClassLoader> classLoaders = new ArrayList<>();
 
     /**
      * Constructor.
      *
-     * @param urls   Url of plugin package
+     * @param urls   Url of sermant-xxx-plugin
      * @param parent parent classloader
      */
     public PluginClassLoader(URL[] urls, ClassLoader parent) {
         super(urls, parent);
     }
 
-    /**
-     * 加载插件服务包中的类并维护
-     *
-     * @param name 全限定名
-     * @return Class对象
-     */
-    private Class<?> loadPluginClass(String name) {
-        if (!pluginClassMap.containsKey(name)) {
-            try {
-                pluginClassMap.put(name, findClass(name));
-            } catch (ClassNotFoundException ignored) {
-                pluginClassMap.put(name, null);
-            }
-        }
-        return pluginClassMap.get(name);
+    public void appendUrl(URL url) {
+        this.addURL(url);
     }
 
-    private boolean ifExclude(String name) {
-        for (String excludePrefix : ignoredPrefixes) {
-            if (name.startsWith(excludePrefix)) {
-                return true;
-            }
-        }
-        return false;
+    public void appendClassLoader(ClassLoader classLoader) {
+        classLoaders.add(classLoader);
     }
 
     @Override
@@ -91,18 +57,31 @@ public class PluginClassLoader extends URLClassLoader {
     @Override
     public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         synchronized (getClassLoadingLock(name)) {
+            // 先从父类查找 再从自身查找 再从上下文类加载器查找 再从类加载器缓存中查找
             Class<?> clazz = null;
-            if (!ifExclude(name)) {
-                clazz = loadPluginClass(name);
-            }
-            if (clazz == null) {
-                clazz = super.loadClass(name, resolve);
 
-                // 通过PluginClassLoader的super.loadClass方法把从自身加载的类放入缓存
-                if (clazz != null && clazz.getClassLoader() == this) {
-                    pluginClassMap.put(name, clazz);
+            try {
+                // 这里需要调用父类的同参数方法 否则: StackOverFlow
+                clazz = super.loadClass(name, resolve);
+            } catch (ClassNotFoundException e) {
+                // 破坏双亲委派
+            }
+
+            if (clazz == null && !ifExclude(name)) {
+                // 自身和线程上下文类加载器不同时从自身找,否则会堆栈溢出
+                if (!this.equals(Thread.currentThread().getContextClassLoader())) {
+                    try {
+                        clazz = Thread.currentThread().getContextClassLoader().loadClass(name);
+                    } catch (ClassNotFoundException e) {
+                        // 通过线程上下文类加载器找不到
+                    }
                 }
             }
+
+            if (clazz == null) {
+                throw new ClassNotFoundException("Sermant pluginClassLoader can not load class: " + name);
+            }
+
             if (resolve) {
                 resolveClass(clazz);
             }
@@ -110,31 +89,24 @@ public class PluginClassLoader extends URLClassLoader {
         }
     }
 
-    @Override
-    public URL getResource(String name) {
-        URL url = null;
+    public Class<?> loadClassOnlySermant(String name, boolean resolve) throws ClassNotFoundException {
+        Class<?> clazz = null;
 
-        // 针对日志配置文件，定制化getResource方法，首先获取agent/config/logback.xml,其次PluginClassloader下资源文件中的logback.xml
-        if (CommonConstant.LOG_SETTING_FILE_NAME.equals(name)) {
-            File logSettingFile = BootArgsIndexer.getLogSettingFile();
-            if (logSettingFile.exists() && logSettingFile.isFile()) {
-                try {
-                    url = logSettingFile.toURI().toURL();
-                } catch (MalformedURLException e) {
-                    url = findResource(name);
-                }
-            } else {
-                url = findResource(name);
-            }
+        // 这里需要调用父类的同参数方法 否则: StackOverFlow
+        clazz = super.loadClass(name, resolve);
+
+        if (resolve) {
+            resolveClass(clazz);
         }
-        if (url == null) {
-            url = super.getResource(name);
-        }
-        return url;
+        return clazz;
     }
 
-    @Override
-    public void addURL(URL url) {
-        super.addURL(url);
+    private boolean ifExclude(String name) {
+        for (String excludePrefix : CommonConstant.IGNORE_PREFIXES) {
+            if (name.startsWith(excludePrefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

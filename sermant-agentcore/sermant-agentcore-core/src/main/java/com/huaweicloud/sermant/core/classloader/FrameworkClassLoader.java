@@ -70,9 +70,7 @@ public class FrameworkClassLoader extends URLClassLoader {
     public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         synchronized (getClassLoadingLock(name)) {
             Class<?> clazz = null;
-
-            // 对于core中已经加载的类则遵循双亲委派原则,其他类则破坏双亲委派机制
-            if (name != null && !name.startsWith("com.huaweicloud.sermant.core")) {
+            if (name != null) {
                 clazz = findFrameworkClass(name);
             }
             if (clazz == null) {

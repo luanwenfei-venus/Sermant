@@ -17,13 +17,11 @@
 package com.huaweicloud.sermant.core.plugin.agent.collector;
 
 import com.huaweicloud.sermant.core.common.LoggerFactory;
-import com.huaweicloud.sermant.core.config.ConfigManager;
-import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig;
-import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig.CombineStrategy;
+import com.huaweicloud.sermant.core.plugin.Plugin;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.AbstractPluginDescription;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDeclarer;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDescription;
-import com.huaweicloud.sermant.core.plugin.agent.transformer.BootstrapTransformer;
+import com.huaweicloud.sermant.core.plugin.agent.transformer.DefaultTransformer;
 
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
@@ -32,8 +30,6 @@ import net.bytebuddy.utility.JavaModule;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -57,26 +53,8 @@ public class PluginCollectorManager {
     private PluginCollectorManager() {
     }
 
-    /**
-     * 从插件收集器中解析出所有的插件描述器，对插件声明器采用配置的合并策略
-     *
-     * @return 插件描述器列表
-     */
-    public static List<PluginDescription> getPlugins() {
-        return getPlugins(ConfigManager.getConfig(AgentConfig.class).getCombineStrategy());
-    }
-
-    /**
-     * 从插件收集器中解析出所有的插件描述器
-     *
-     * @param strategy 插件声明器的合并策略
-     * @return 插件描述器列表
-     */
-    public static List<PluginDescription> getPlugins(AgentConfig.CombineStrategy strategy) {
-        final List<PluginDescription> plugins = new ArrayList<>();
-        plugins.addAll(combinePlugins(getDeclarers(), strategy));
-        plugins.addAll(getDescriptions());
-        return plugins;
+    public static List<PluginDescription> getPluginDescription(Plugin plugin){
+        return new ArrayList<>(describeDeclarers(getDeclarers(plugin.getPluginClassLoader())));
     }
 
     /**
@@ -84,52 +62,16 @@ public class PluginCollectorManager {
      *
      * @return 插件声明器集
      */
-    private static List<? extends PluginDeclarer> getDeclarers() {
+    private static List<? extends PluginDeclarer> getDeclarers(ClassLoader classLoader) {
         final List<PluginDeclarer> declares = new ArrayList<>();
         for (PluginCollector collector : COLLECTORS) {
-            for (PluginDeclarer declarer : collector.getDeclarers()) {
+            for (PluginDeclarer declarer : collector.getDeclarers(classLoader)) {
                 if (declarer.isEnabled()) {
                     declares.add(declarer);
                 }
             }
         }
         return declares;
-    }
-
-    /**
-     * 从插件收集器中获取所有插件描述器
-     *
-     * @return 插件描述器集
-     */
-    private static List<? extends PluginDescription> getDescriptions() {
-        final List<PluginDescription> descriptions = new ArrayList<>();
-        for (PluginCollector collector : COLLECTORS) {
-            for (PluginDescription description : collector.getDescriptions()) {
-                descriptions.add(description);
-            }
-        }
-        return descriptions;
-    }
-
-    /**
-     * 合并所有的插件声明器
-     *
-     * @param declarers 插件声明器列表
-     * @param strategy 插件声明器合并策略
-     * @return 合并所得的插件描述器列表
-     */
-    private static List<PluginDescription> combinePlugins(List<? extends PluginDeclarer> declarers,
-        AgentConfig.CombineStrategy strategy) {
-        final List<PluginDescription> plugins = new ArrayList<>();
-        if (!declarers.isEmpty()) {
-            if (Objects.requireNonNull(strategy) == CombineStrategy.NONE) {
-                plugins.addAll(describeDeclarers(declarers));
-            } else {
-                throw new IllegalArgumentException(
-                    String.format(Locale.ROOT, "Unknown combine strategy %s. ", strategy));
-            }
-        }
-        return plugins;
     }
 
     /**
@@ -163,7 +105,7 @@ public class PluginCollectorManager {
             public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder, TypeDescription typeDescription,
                 ClassLoader classLoader, JavaModule module) {
                 // todo ClassLoader.getSystemClassLoader() 已经没有作用
-                return new BootstrapTransformer(declarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader()))
+                return new DefaultTransformer(declarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader()))
                     .transform(builder, typeDescription, classLoader, module);
             }
         };
@@ -173,7 +115,8 @@ public class PluginCollectorManager {
         try {
             return matcher.matches(target);
         } catch (Exception exception) {
-            LOGGER.log(Level.WARNING, "Exception occur when math target: " + target.getActualName(), exception);
+            LOGGER.log(Level.WARNING, "Exception occur when math target: " + target.getActualName() + ",{0}",
+                exception.getMessage());
             return false;
         }
     }

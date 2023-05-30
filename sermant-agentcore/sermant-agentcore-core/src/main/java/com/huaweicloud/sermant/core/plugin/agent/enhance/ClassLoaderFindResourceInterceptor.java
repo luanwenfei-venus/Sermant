@@ -25,7 +25,7 @@ public class ClassLoaderFindResourceInterceptor implements Interceptor {
         if (ifExclude(name)) {
             LOGGER.info("Find resource: " + path + " by sermant.");
             try {
-                context.skip(ClassLoaderManager.getPluginClassLoader().findResource(path));
+                context.skip(ClassLoaderManager.getPluginClassFinder().findResource(path));
                 LOGGER.info("Find resource: " + name + " successfully by sermant.");
             } catch (Exception exception) {
                 LOGGER.log(Level.SEVERE, "Can not find resource by sermant.And then find by " + context.getObject(),

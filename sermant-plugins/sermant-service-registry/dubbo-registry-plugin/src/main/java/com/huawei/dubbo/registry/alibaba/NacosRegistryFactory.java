@@ -21,6 +21,7 @@ import com.huawei.dubbo.registry.service.nacos.NacosRegistryService;
 import com.huawei.dubbo.registry.utils.ReflectUtils;
 
 import com.huaweicloud.sermant.core.common.LoggerFactory;
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 
 import com.alibaba.dubbo.common.URL;
@@ -42,7 +43,7 @@ import java.util.logging.Logger;
 public class NacosRegistryFactory extends AbstractRegistryFactory {
     private static final String ALIBABA_REGISTRY_CLASS_NAME = "com.huawei.dubbo.registry.alibaba.NacosRegistry";
     private static final Logger LOGGER = LoggerFactory.getLogger();
-    private final NacosRegistryService registryService = ServiceManager.getService(NacosRegistryService.class);
+    private final NacosRegistryService registryService = PluginServiceManager.getPluginService(NacosRegistryService.class);
 
     @Override
     protected Registry createRegistry(URL url) {

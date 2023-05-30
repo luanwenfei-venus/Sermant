@@ -37,6 +37,7 @@ import com.huaweicloud.sermant.core.plugin.common.PluginConstant;
 import com.huaweicloud.sermant.core.plugin.common.PluginSchemaValidator;
 import com.huaweicloud.sermant.core.plugin.config.PluginConfigManager;
 import com.huaweicloud.sermant.core.plugin.config.ServiceMeta;
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 import com.huaweicloud.sermant.core.utils.JarFileUtils;
 import com.huaweicloud.sermant.core.utils.StringUtils;
@@ -149,7 +150,7 @@ public class RegistryServiceImpl implements RegistryService {
         config = PluginConfigManager.getPluginConfig(RegisterConfig.class);
         commonConfig = PluginConfigManager.getPluginConfig(RegisterServiceCommonConfig.class);
         serviceMeta = ConfigManager.getConfig(ServiceMeta.class);
-        governanceService = ServiceManager.getService(GovernanceService.class);
+        governanceService = PluginServiceManager.getPluginService(GovernanceService.class);
         client = new ServiceCenterClient(new AddressManager(config.getProject(), commonConfig.getAddressList(),
             EVENT_BUS), createSslProperties(), new DefaultRequestAuthHeaderProvider(), DEFAULT_TENANT_NAME,
             Collections.emptyMap());

@@ -18,6 +18,7 @@ package com.huaweicloud.sermant.core.classloader;
 
 import com.huaweicloud.sermant.core.common.CommonConstant;
 import com.huaweicloud.sermant.core.plugin.classloader.PluginClassLoader;
+import com.huaweicloud.sermant.core.plugin.classloader.PluginClassFinder;
 import com.huaweicloud.sermant.core.utils.FileUtils;
 import com.huaweicloud.sermant.god.common.SermantClassLoader;
 
@@ -38,11 +39,12 @@ public class ClassLoaderManager {
     private static final SermantClassLoader SERMANT_CLASS_LOADER =
         (SermantClassLoader)ClassLoaderManager.class.getClassLoader();
 
+    private static PluginClassFinder pluginClassFinder;
+
     private static FrameworkClassLoader frameworkClassLoader;
 
-    private static PluginClassLoader pluginClassLoader;
-
-    private ClassLoaderManager() {}
+    private ClassLoaderManager() {
+    }
 
     /**
      * Init custom classloaders.
@@ -52,7 +54,11 @@ public class ClassLoaderManager {
      */
     public static void init(Map<String, Object> argsMap) throws MalformedURLException {
         initFrameworkClassLoader(argsMap.get(CommonConstant.CORE_IMPLEMENT_DIR_KEY).toString());
-        pluginClassLoader = new PluginClassLoader(new URL[0], SERMANT_CLASS_LOADER);
+        pluginClassFinder = new PluginClassFinder();
+    }
+
+    public static PluginClassLoader createPluginClassLoader(){
+        return new PluginClassLoader(new URL[0], SERMANT_CLASS_LOADER);
     }
 
     /**
@@ -64,8 +70,8 @@ public class ClassLoaderManager {
         return frameworkClassLoader;
     }
 
-    public static PluginClassLoader getPluginClassLoader() {
-        return pluginClassLoader;
+    public static PluginClassFinder getPluginClassFinder() {
+        return pluginClassFinder;
     }
 
     public static SermantClassLoader getSermantClassLoader() {

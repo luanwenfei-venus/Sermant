@@ -31,12 +31,12 @@ import java.util.ServiceLoader;
  */
 public class DefaultPluginCollector implements PluginCollector {
     @Override
-    public Iterable<? extends PluginDeclarer> getDeclarers() {
-        return ServiceLoader.load(PluginDeclarer.class, ClassLoaderManager.getPluginClassLoader());
+    public Iterable<? extends PluginDeclarer> getDeclarers(ClassLoader classLoader) {
+        return ServiceLoader.load(PluginDeclarer.class, classLoader);
     }
 
     @Override
-    public Iterable<? extends PluginDescription> getDescriptions() {
-        return ServiceLoader.load(PluginDescription.class, ClassLoaderManager.getPluginClassLoader());
+    public Iterable<? extends PluginDescription> getDescriptions(ClassLoader classLoader) {
+        return ServiceLoader.load(PluginDescription.class, classLoader);
     }
 }

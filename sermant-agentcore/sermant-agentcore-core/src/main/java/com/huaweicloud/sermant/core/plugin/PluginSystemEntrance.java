@@ -63,20 +63,16 @@ public class PluginSystemEntrance {
     }
 
     /**
-     * 初始化插件相关的内容，分插件和适配器两种
-     *
-     * @param instrumentation Instrumentation对象
+     * 初始化插件相关的内容
      */
-    public static void initialize(Instrumentation instrumentation) {
+    public static void initialize() {
         final PluginSetting pluginSetting = loadSetting();
         Set<String> plugins = getLoadPlugins(pluginSetting);
         if (plugins == null) {
             LOGGER.info("No plugin is configured to be loaded.");
             return;
         }
-        if (PluginManager.initPlugins(plugins, instrumentation)) {
-            ByteEnhanceManager.enhance(instrumentation);
-        }
+        PluginManager.initPlugins(plugins);
     }
 
     /**

@@ -129,17 +129,13 @@ public abstract class ConfigManager {
      */
     private static synchronized void doLoadConfig(File configFile, Class<? extends BaseConfig> baseCls,
         ClassLoader classLoader) {
-        // 通过FrameworkClassLoader 获取配置加载策略
-        final LoadConfigStrategy<?> loadConfigStrategy =
-            getLoadConfigStrategy(configFile, ClassLoaderManager.getFrameworkClassLoader());
-        final Object holder = loadConfigStrategy.getConfigHolder(configFile, argsMap);
         foreachConfig(new ConfigConsumer() {
             @Override
             public void accept(BaseConfig config) {
                 final String typeKey = ConfigKeyUtil.getTypeKey(config.getClass());
                 final BaseConfig retainedConfig = CONFIG_MAP.get(typeKey);
                 if (retainedConfig == null) {
-                    CONFIG_MAP.put(typeKey, ((LoadConfigStrategy)loadConfigStrategy).loadConfig(holder, config));
+                    CONFIG_MAP.put(typeKey, doLoad(configFile, config));
                 } else if (retainedConfig.getClass() == config.getClass()) {
                     LOGGER.fine(
                         String.format(Locale.ROOT, "Skip load config [%s] repeatedly. ", config.getClass().getName()));
@@ -149,6 +145,14 @@ public abstract class ConfigManager {
                 }
             }
         }, baseCls, classLoader);
+    }
+
+    public static BaseConfig doLoad(File configFile, BaseConfig baseConfig){
+        // 通过FrameworkClassLoader 获取配置加载策略
+        final LoadConfigStrategy<?> loadConfigStrategy =
+                getLoadConfigStrategy(configFile, ClassLoaderManager.getFrameworkClassLoader());
+        final Object holder = loadConfigStrategy.getConfigHolder(configFile, argsMap);
+        return ((LoadConfigStrategy)loadConfigStrategy).loadConfig(holder, baseConfig);
     }
 
     /**
@@ -162,7 +166,7 @@ public abstract class ConfigManager {
      * @param classLoader 用于查找加载策略的类加载器，允许在类加载中添加新的配置加载策略
      * @return 加载配置策略
      */
-    private static LoadConfigStrategy<?> getLoadConfigStrategy(File configFile, ClassLoader classLoader) {
+    protected static LoadConfigStrategy<?> getLoadConfigStrategy(File configFile, ClassLoader classLoader) {
         for (LoadConfigStrategy<?> strategy : LOAD_CONFIG_STRATEGIES) {
             if (strategy.canLoad(configFile)) {
                 return strategy;

@@ -21,6 +21,7 @@ import com.huaweicloud.sermant.cache.RuleCache;
 import com.huaweicloud.sermant.config.RemovalRule;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 import com.huaweicloud.sermant.entity.InstanceInfo;
 import com.huaweicloud.sermant.entity.RemovalCountInfo;
@@ -42,7 +43,7 @@ import java.util.logging.Logger;
 public abstract class AbstractRemovalInterceptor<T> extends AbstractSwitchInterceptor {
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
-    private final RemovalEventService removalEventService = ServiceManager.getService(RemovalEventService.class);
+    private final RemovalEventService removalEventService = PluginServiceManager.getPluginService(RemovalEventService.class);
 
     @Override
     public ExecuteContext doBefore(ExecuteContext context) {

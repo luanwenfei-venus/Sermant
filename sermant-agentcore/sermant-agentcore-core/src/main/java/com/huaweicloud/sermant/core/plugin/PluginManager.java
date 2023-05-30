@@ -21,7 +21,7 @@ import com.huaweicloud.sermant.core.common.BootArgsIndexer;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
 import com.huaweicloud.sermant.core.exception.SchemaException;
-import com.huaweicloud.sermant.core.plugin.classloader.ServiceClassLoader;
+import com.huaweicloud.sermant.core.plugin.agent.ByteEnhanceManager;
 import com.huaweicloud.sermant.core.plugin.common.PluginConstant;
 import com.huaweicloud.sermant.core.plugin.common.PluginSchemaValidator;
 import com.huaweicloud.sermant.core.plugin.config.PluginConfigManager;
@@ -30,14 +30,15 @@ import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
-import java.lang.instrument.Instrumentation;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.jar.JarFile;
 import java.util.logging.Level;
@@ -56,6 +57,8 @@ public class PluginManager {
      */
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
+    private static final Map<String, Plugin> PLUGIN_MAP = new HashMap<>();
+
     private PluginManager() {
     }
 
@@ -63,49 +66,26 @@ public class PluginManager {
      * 初始化插件包、配置、插件服务包等插件相关的内容
      *
      * @param pluginNames 插件名称集
-     * @param instrumentation Instrumentation对象
-     * @return 是否有加载任何插件
      */
-    public static boolean initPlugins(Set<String> pluginNames, Instrumentation instrumentation) {
+    public static void initPlugins(Set<String> pluginNames) {
         if (pluginNames == null || pluginNames.isEmpty()) {
-            return false;
+            return;
         }
         final String pluginPackage;
         try {
             pluginPackage = BootArgsIndexer.getPluginPackageDir().getCanonicalPath();
         } catch (IOException ignored) {
             LOGGER.warning("Resolve plugin package failed. ");
-            return false;
+            return;
         }
         for (String pluginName : pluginNames) {
             try {
-                initPlugin(pluginName, pluginPackage, instrumentation);
+                initPlugin(pluginName, pluginPackage);
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE,
-                        String.format(Locale.ENGLISH, "load plugin failed, plugin name: %s", pluginName), ex);
+                    String.format(Locale.ENGLISH, "load plugin failed, plugin name: %s", pluginName), ex);
             }
         }
-        return true;
-    }
-
-    /**
-     * 获取插件包目录
-     *
-     * @param pluginPath 插件根目录
-     * @return 插件包目录
-     */
-    private static File getPluginDir(String pluginPath) {
-        return new File(pluginPath + File.separatorChar + PluginConstant.PLUGIN_DIR_NAME);
-    }
-
-    /**
-     * 获取插件服务包目录
-     *
-     * @param pluginPath 插件根目录
-     * @return 插件服务包目录
-     */
-    private static File getServiceDir(String pluginPath) {
-        return new File(pluginPath + File.separatorChar + PluginConstant.SERVICE_DIR_NAME);
     }
 
     /**
@@ -113,40 +93,28 @@ public class PluginManager {
      *
      * @param pluginName 插件名称
      * @param pluginPackage 插件包路径
-     * @param instrumentation Instrumentation对象
      */
-    private static void initPlugin(String pluginName, String pluginPackage, Instrumentation instrumentation) {
+    private static void initPlugin(String pluginName, String pluginPackage) {
         final String pluginPath = pluginPackage + File.separatorChar + pluginName;
         if (!new File(pluginPath).exists()) {
             LOGGER.severe(String.format(Locale.ROOT, "Plugin directory %s does not exist, so skip initializing %s. ",
-                    pluginPath, pluginName));
+                pluginPath, pluginName));
             return;
         }
-        doInitPlugin(pluginName, pluginPath, instrumentation);
+        doInitPlugin(new Plugin(pluginName, pluginPath, ClassLoaderManager.createPluginClassLoader()));
     }
 
-    /**
-     * 初始化一个插件的插件包、配置、插件服务包等相关内容，主要包含以下流程：
-     * <pre>
-     *     1.加载插件包
-     *     2.创建自定义类加载器加载插件服务包
-     *     3.加载插件配置信息
-     *     4.初始化插件服务
-     *     5.设置默认插件版本
-     * </pre>
-     *
-     * @param pluginName 插件名称
-     * @param pluginPath 插件路径
-     * @param instrumentation Instrumentation对象
-     */
-    private static void doInitPlugin(String pluginName, String pluginPath, Instrumentation instrumentation) {
-        loadPlugins(pluginName, getPluginDir(pluginPath), instrumentation);
-        final ClassLoader classLoader = loadServices(pluginName, getServiceDir(pluginPath));
-        loadConfig(PluginConstant.getPluginConfigFile(pluginPath), classLoader);
-        initService(classLoader);
-        setDefaultVersion(pluginName);
-        LOGGER.info(String.format(Locale.ROOT, "Load plugin: [%s] successful.", pluginName));
-        FrameworkEventCollector.getInstance().collectPluginsLoadEvent(pluginName);
+    private static void doInitPlugin(Plugin plugin) {
+        ClassLoaderManager.getPluginClassFinder().addPluginClassLoader(plugin);
+        PLUGIN_MAP.put(plugin.getName(), plugin);
+        loadPlugins(plugin);
+        loadService(plugin);
+        loadConfig(plugin);
+        initService(plugin);
+        setDefaultVersion(plugin.getName());
+        FrameworkEventCollector.getInstance().collectPluginsLoadEvent(plugin.getName());
+        LOGGER.info(String.format(Locale.ROOT, "Load plugin: [%s] successful.", plugin.getName()));
+        ByteEnhanceManager.enhanceStaticPlugin(plugin);
     }
 
     /**
@@ -159,65 +127,36 @@ public class PluginManager {
     }
 
     /**
-     * 初始化服务，交由{@link PluginServiceManager#initPluginService(ClassLoader)}完成
+     * 加载所有插件包
      *
-     * @param classLoader 加载插件服务包的自定义ClassLoader
+     * @param plugin 插件
      */
-    private static void initService(ClassLoader classLoader) {
-        PluginServiceManager.initPluginService(classLoader);
+    private static void loadPlugins(Plugin plugin) {
+        for (File jar : listJars(getPluginDir(plugin.getPath()))) {
+            processByJarFile(plugin.getName(), jar, true, new JarFileConsumer() {
+                @Override
+                public void consume(JarFile jarFile) {
+                    try {
+                        plugin.getPluginClassLoader().appendUrl(new File(jarFile.getName()).toURI().toURL());
+                    } catch (MalformedURLException e) {
+                        LOGGER.log(Level.SEVERE, "Add plugin path to pluginClassLoader fail, exception: ", e);
+                    }
+                }
+            });
+        }
     }
 
-    /**
-     * 由{@link PluginConfigManager#loadServiceConfig(java.io.File, java.lang.ClassLoader)}方法加载插件配置信息
-     *
-     * @param configFile 配置文件
-     * @param classLoader 加载插件服务包的自定义类加载器
-     */
-    private static void loadConfig(File configFile, ClassLoader classLoader) {
-        PluginConfigManager.loadServiceConfig(configFile, classLoader);
+    private static void loadConfig(Plugin plugin) {
+        PluginConfigManager.loadPluginConfig(plugin);
     }
 
-    /**
-     * 遍历目录下所有jar包，按文件名字典序排列
-     *
-     * @param dir 目标文件夹
-     * @return 所有jar包
-     */
-    private static File[] listJars(File dir) {
-        if (!dir.exists() || !dir.isDirectory()) {
-            return new File[0];
-        }
-        final File[] files = dir.listFiles(new FileFilter() {
-            @Override
-            public boolean accept(File pathname) {
-                return pathname.isFile() && pathname.getName().endsWith(".jar");
-            }
-        });
-        if (files == null) {
-            return new File[0];
-        }
-        Arrays.sort(files, new Comparator<File>() {
-            @Override
-            public int compare(File o1, File o2) {
-                return o1.getName().compareTo(o2.getName());
-            }
-        });
-        return files;
+    private static void initService(Plugin plugin) {
+        PluginServiceManager.initPluginService(plugin);
     }
 
-    /**
-     * 创建自定义类加载器加载所有插件服务包，若无插件服务包，则不会创建类加载器
-     *
-     * @param pluginName 插件名称
-     * @param serviceDir 插件服务文件夹
-     * @return 自定义类加载器
-     */
-    private static ClassLoader loadServices(String pluginName, File serviceDir) {
-        final URL[] urls = toUrls(pluginName, listJars(serviceDir));
-        if (urls.length > 0) {
-            return new ServiceClassLoader(urls, ClassLoaderManager.getPluginClassLoader());
-        }
-        return ClassLoaderManager.getPluginClassLoader();
+    private static void loadService(Plugin plugin) {
+        final URL[] urls = toUrls(plugin.getName(), listJars(getServiceDir(plugin.getPath())));
+        plugin.createServiceClassLoader(urls);
     }
 
     /**
@@ -265,7 +204,7 @@ public class PluginManager {
      * @return 是否无异常处理完毕
      */
     private static boolean processByJarFile(String pluginName, File jar, boolean ifCheckSchema,
-            JarFileConsumer consumer) {
+        JarFileConsumer consumer) {
         JarFile jarFile = null;
         try {
             jarFile = new JarFile(jar);
@@ -291,26 +230,51 @@ public class PluginManager {
     }
 
     /**
-     * 加载所有插件包
+     * 遍历目录下所有jar包，按文件名字典序排列
      *
-     * @param pluginName 插件名称
-     * @param pluginDir 插件包目录
-     * @param instrumentation Instrumentation对象
+     * @param dir 目标文件夹
+     * @return 所有jar包
      */
-    private static void loadPlugins(String pluginName, File pluginDir, Instrumentation instrumentation) {
-        for (File jar : listJars(pluginDir)) {
-            processByJarFile(pluginName, jar, true, new JarFileConsumer() {
-                @Override
-                public void consume(JarFile jarFile) {
-                    try {
-                        ClassLoaderManager.getPluginClassLoader()
-                                .appendUrl(new File(jarFile.getName()).toURI().toURL());
-                    } catch (MalformedURLException e) {
-                        LOGGER.log(Level.SEVERE, "Add plugin path to pluginClassLoader fail, exception: ", e);
-                    }
-                }
-            });
+    private static File[] listJars(File dir) {
+        if (!dir.exists() || !dir.isDirectory()) {
+            return new File[0];
         }
+        final File[] files = dir.listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                return pathname.isFile() && pathname.getName().endsWith(".jar");
+            }
+        });
+        if (files == null) {
+            return new File[0];
+        }
+        Arrays.sort(files, new Comparator<File>() {
+            @Override
+            public int compare(File o1, File o2) {
+                return o1.getName().compareTo(o2.getName());
+            }
+        });
+        return files;
+    }
+
+    /**
+     * 获取插件包目录
+     *
+     * @param pluginPath 插件根目录
+     * @return 插件包目录
+     */
+    private static File getPluginDir(String pluginPath) {
+        return new File(pluginPath + File.separatorChar + PluginConstant.PLUGIN_DIR_NAME);
+    }
+
+    /**
+     * 获取插件服务包目录
+     *
+     * @param pluginPath 插件根目录
+     * @return 插件服务包目录
+     */
+    private static File getServiceDir(String pluginPath) {
+        return new File(pluginPath + File.separatorChar + PluginConstant.SERVICE_DIR_NAME);
     }
 
     /**

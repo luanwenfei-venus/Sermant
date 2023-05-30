@@ -17,12 +17,19 @@
 package com.huaweicloud.sermant.core.plugin.service;
 
 import com.huaweicloud.sermant.core.common.LoggerFactory;
+import com.huaweicloud.sermant.core.event.EventManager;
 import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
+import com.huaweicloud.sermant.core.exception.DupServiceException;
+import com.huaweicloud.sermant.core.plugin.Plugin;
+import com.huaweicloud.sermant.core.service.BaseService;
 import com.huaweicloud.sermant.core.service.ServiceManager;
+import com.huaweicloud.sermant.core.utils.SpiLoadUtils;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,33 +41,77 @@ import java.util.logging.Logger;
  * @version 1.0.0
  * @since 2021-11-12
  */
-public class PluginServiceManager extends ServiceManager {
+public class PluginServiceManager {
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
+    /**
+     * 服务集合
+     */
+    private static final Map<String, BaseService> SERVICES = new HashMap<String, BaseService>();
+
     private PluginServiceManager() {
-        super();
     }
 
     /**
      * 初始化插件服务
      *
-     * @param classLoader 插件服务包的ClassLoader
+     * @param plugin 插件
      */
-    public static void initPluginService(ClassLoader classLoader) {
-        List<String> startServiceList = new ArrayList<>();
+    public static void initPluginService(Plugin plugin) {
+        ClassLoader classLoader =
+            plugin.getServiceClassLoader() != null ? plugin.getServiceClassLoader() : plugin.getPluginClassLoader();
+        ArrayList<String> startServiceArray = new ArrayList<>();
         for (PluginService service : ServiceLoader.load(PluginService.class, classLoader)) {
             if (loadService(service, service.getClass(), PluginService.class)) {
+                plugin.getServiceList().add(service.getClass().getName());
                 try {
                     service.start();
-                    startServiceList.add(service.getClass().getName());
+                    startServiceArray.add(service.getClass().getName());
                 } catch (Exception ex) {
                     LOGGER.log(Level.SEVERE, String.format(Locale.ENGLISH,
-                            "Error occurs while starting plugin service: %s",
-                            service.getClass()), ex);
+                        "Error occurs while starting plugin service: %s", service.getClass()), ex);
                 }
             }
         }
-        FrameworkEventCollector.getInstance().collectServiceStartEvent(startServiceList.toString());
+        FrameworkEventCollector.getInstance().collectServiceStartEvent(startServiceArray.toString());
+        addStopHook(); // 加载完所有服务再启动服务
+    }
+
+    /**
+     * 加载服务对象至服务集中
+     *
+     * @param service 服务对象
+     * @param serviceCls 服务class
+     * @param baseCls 服务基class，用于spi
+     * @return 是否加载成功
+     */
+    protected static boolean loadService(BaseService service, Class<?> serviceCls,
+        Class<? extends BaseService> baseCls) {
+        if (serviceCls == null || serviceCls == baseCls || !baseCls.isAssignableFrom(serviceCls)) {
+            return false;
+        }
+        final String serviceName = serviceCls.getName();
+        final BaseService oldService = SERVICES.get(serviceName);
+        if (oldService != null && oldService.getClass() == service.getClass()) {
+            return false;
+        }
+        boolean isLoadSucceed = false;
+        final BaseService betterService =
+            SpiLoadUtils.getBetter(oldService, service, new SpiLoadUtils.WeightEqualHandler<BaseService>() {
+                @Override
+                public BaseService handle(BaseService source, BaseService target) {
+                    throw new DupServiceException(serviceName);
+                }
+            });
+        if (betterService != oldService) {
+            SERVICES.put(serviceName, service);
+            isLoadSucceed = true;
+        }
+        isLoadSucceed |= loadService(service, serviceCls.getSuperclass(), baseCls);
+        for (Class<?> interfaceCls : serviceCls.getInterfaces()) {
+            isLoadSucceed |= loadService(service, interfaceCls, baseCls);
+        }
+        return isLoadSucceed;
     }
 
     /**
@@ -71,6 +122,41 @@ public class PluginServiceManager extends ServiceManager {
      * @return 插件服务实例
      */
     public static <T extends PluginService> T getPluginService(Class<T> serviceClass) {
-        return getService(serviceClass);
+        final BaseService baseService = SERVICES.get(serviceClass.getName());
+        if (baseService != null && serviceClass.isAssignableFrom(baseService.getClass())) {
+            return (T)baseService;
+        }
+        throw new IllegalArgumentException("Service instance of [" + serviceClass + "] is not found. ");
+    }
+
+    /**
+     * 添加关闭服务的钩子
+     */
+    private static void addStopHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+                offerEvent();
+                for (BaseService baseService : new HashSet<>(SERVICES.values())) {
+                    try {
+                        baseService.stop();
+                    } catch (Exception ex) {
+                        LOGGER.log(Level.SEVERE, String.format(Locale.ENGLISH,
+                            "Error occurs while stopping service: %s", baseService.getClass().toString()), ex);
+                    }
+                }
+            }
+        }));
+    }
+
+    private static void offerEvent() {
+        // 上报服务关闭事件
+        for (BaseService baseService : new HashSet<>(SERVICES.values())) {
+            FrameworkEventCollector.getInstance().collectServiceStopEvent(baseService.getClass().getName());
+        }
+
+        // 上报Sermant关闭的事件
+        FrameworkEventCollector.getInstance().collectAgentStopEvent();
+        EventManager.shutdown();
     }
 }

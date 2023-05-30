@@ -24,6 +24,9 @@ import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
 import com.huaweicloud.sermant.core.plugin.agent.template.BootstrapConstTemplate;
 import com.huaweicloud.sermant.core.plugin.agent.template.BootstrapMemberTemplate;
 import com.huaweicloud.sermant.core.plugin.agent.template.BootstrapStaticTemplate;
+import com.huaweicloud.sermant.core.plugin.agent.template.DefaultConstTemplate;
+import com.huaweicloud.sermant.core.plugin.agent.template.DefaultMemberTemplate;
+import com.huaweicloud.sermant.core.plugin.agent.template.DefaultStaticTemplate;
 import com.huaweicloud.sermant.core.plugin.agent.template.MethodKeyCreator;
 
 import net.bytebuddy.agent.builder.AgentBuilder;
@@ -76,10 +79,11 @@ public class DefaultTransformer implements AgentBuilder.Transformer {
             return builder;
         }
 
-        // 引导类加载器的时候为null
-        if (classLoader == null) {
-            return enhanceMethods(builder, typeDesc, ClassLoaderManager.getPluginClassLoader());
-        }
+        // todo: 新的类隔离架构将不再依赖于被增强类的类加载器，这里可以选择合并
+//        // 引导类加载器的时候为null
+//        if (classLoader == null) {
+//            return enhanceMethods(builder, typeDesc, ClassLoaderManager.getPluginClassLoader());
+//        }
         return enhanceMethods(builder, typeDesc, classLoader);
     }
 
@@ -121,11 +125,11 @@ public class DefaultTransformer implements AgentBuilder.Transformer {
         }
         try {
             if (methodDesc.isStatic()) {
-                return resolve(builder, methodDesc, interceptors, BootstrapStaticTemplate.class);
+                return resolve(builder, methodDesc, interceptors, DefaultStaticTemplate.class);
             } else if (methodDesc.isConstructor()) {
-                return resolve(builder, methodDesc, interceptors, BootstrapConstTemplate.class);
+                return resolve(builder, methodDesc, interceptors, DefaultConstTemplate.class);
             } else {
-                return resolve(builder, methodDesc, interceptors, BootstrapMemberTemplate.class);
+                return resolve(builder, methodDesc, interceptors, DefaultMemberTemplate.class);
             }
         } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             LOGGER.warning(String.format(Locale.ROOT, "Enhance [%s] failed for [%s], caused by [%s]. ",

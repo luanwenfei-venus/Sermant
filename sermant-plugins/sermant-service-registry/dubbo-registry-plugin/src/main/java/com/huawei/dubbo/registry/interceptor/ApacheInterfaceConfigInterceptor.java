@@ -20,6 +20,7 @@ import com.huawei.dubbo.registry.service.RegistryConfigService;
 
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.AbstractInterceptor;
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 
 /**
@@ -35,7 +36,7 @@ public class ApacheInterfaceConfigInterceptor extends AbstractInterceptor {
      * 构造方法
      */
     public ApacheInterfaceConfigInterceptor() {
-        registryConfigService = ServiceManager.getService(RegistryConfigService.class);
+        registryConfigService = PluginServiceManager.getPluginService(RegistryConfigService.class);
     }
 
     @Override

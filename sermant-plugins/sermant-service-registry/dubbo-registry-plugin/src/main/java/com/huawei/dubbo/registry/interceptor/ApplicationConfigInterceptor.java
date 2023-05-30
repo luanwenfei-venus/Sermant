@@ -20,6 +20,7 @@ import com.huawei.dubbo.registry.service.ApplicationConfigService;
 
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.AbstractInterceptor;
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 
 /**
@@ -35,7 +36,7 @@ public class ApplicationConfigInterceptor extends AbstractInterceptor {
      * 构造方法
      */
     public ApplicationConfigInterceptor() {
-        applicationConfigService = ServiceManager.getService(ApplicationConfigService.class);
+        applicationConfigService = PluginServiceManager.getPluginService(ApplicationConfigService.class);
     }
 
     @Override

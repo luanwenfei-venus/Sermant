@@ -24,11 +24,10 @@ public class ClassLoaderLoadClassInterceptor implements Interceptor {
         if (ifExclude(name)) {
             LOGGER.info("Load class: " + name + " by sermant.");
             try {
-                context.skip(ClassLoaderManager.getPluginClassLoader().loadClassOnlySermant(name, false));
+                context.skip(ClassLoaderManager.getPluginClassFinder().loadClassOnlySermant(name, false));
                 LOGGER.info("Load class: " + name + " successfully by sermant.");
             } catch (Exception exception) {
-                LOGGER.log(Level.SEVERE, "Can not load class by sermant. And then load by " + context.getObject(),
-                    exception);
+                LOGGER.log(Level.SEVERE, "Can not load class by sermant. And then load by " + context.getObject());
             }
         }
         return context;

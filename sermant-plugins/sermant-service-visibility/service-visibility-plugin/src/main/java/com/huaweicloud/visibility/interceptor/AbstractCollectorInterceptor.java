@@ -19,6 +19,7 @@ package com.huaweicloud.visibility.interceptor;
 
 import com.huaweicloud.sermant.core.common.BootArgsIndexer;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.AbstractInterceptor;
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 import com.huaweicloud.sermant.core.service.visibility.common.ServiceType;
 import com.huaweicloud.sermant.core.service.visibility.entity.Consanguinity;
@@ -48,7 +49,7 @@ public abstract class AbstractCollectorInterceptor extends AbstractInterceptor {
     /**
      * 消息发送服务
      */
-    protected final CollectorService collectorService = ServiceManager.getService(CollectorService.class);
+    protected final CollectorService collectorService = PluginServiceManager.getPluginService(CollectorService.class);
 
     /**
      * 保存方法信息

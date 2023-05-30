@@ -76,7 +76,7 @@ public abstract class InterceptDeclarer {
      * @throws IllegalArgumentException IllegalArgumentException
      */
     public static InterceptDeclarer build(MethodMatcher methodMatcher, String... interceptors) {
-        if (methodMatcher == null || interceptors == null || interceptors.length <= 0) {
+        if (methodMatcher == null || interceptors == null || interceptors.length == 0) {
             throw new IllegalArgumentException("Matcher cannot be null and interceptor array cannot be empty. ");
         }
         return new InterceptDeclarer() {
@@ -116,14 +116,14 @@ public abstract class InterceptDeclarer {
         throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
         IllegalAccessException, InstantiationException {
         final ArrayList<Interceptor> interceptorList = new ArrayList<>();
-        if (!ClassLoaderManager.getPluginClassLoader().equals(classLoader)) {
-            // 如果不是PlugClassLoader 则放入类加载器缓存
-            ClassLoaderManager.getPluginClassLoader().appendClassLoader(classLoader);
-        }
+        // todo 暂时不需要了
+//        if (!ClassLoaderManager.getPluginClassLoader().equals(classLoader)) {
+//            // 如果不是PlugClassLoader 则放入类加载器缓存
+//            ClassLoaderManager.getPluginClassLoader().appendClassLoader(classLoader);
+//        }
 
         for (String interceptor : interceptors) {
-            // final Object instance = getInterceptorClass(interceptor, classLoader).newInstance();
-            final Object instance = ClassLoaderManager.getPluginClassLoader().loadClass(interceptor).newInstance();
+            final Object instance = ClassLoaderManager.getPluginClassFinder().loadClass(interceptor).newInstance();
             if (instance instanceof Interceptor) {
                 interceptorList.add((Interceptor)instance);
             }

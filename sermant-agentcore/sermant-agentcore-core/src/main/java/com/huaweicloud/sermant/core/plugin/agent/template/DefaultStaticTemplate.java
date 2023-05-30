@@ -57,7 +57,7 @@ public class DefaultStaticTemplate {
             @Advice.Local(value = "_INTERCEPTOR_ITR_$SERMANT_LOCAL") ListIterator<?> interceptorItr,
             @Advice.Local(value = "_EXECUTE_CONTEXT_$SERMANT_LOCAL") Object context,
             @Advice.Local(value = "_IS_SKIP_$SERMANT_LOCAL") Boolean isSkip) throws Throwable {
-        final String adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template.BootstrapStaticTemplate_"
+        final String adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template.DefaultStaticTemplate_"
                 + Integer.toHexString(methodKey.hashCode());
         interceptorItr = Adviser.getInterceptorListMap().get(adviceClsName).listIterator();
         context = ExecuteContext.forStaticMethod(cls, method, arguments, null);

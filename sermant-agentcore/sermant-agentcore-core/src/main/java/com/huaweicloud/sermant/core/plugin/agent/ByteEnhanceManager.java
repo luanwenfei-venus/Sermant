@@ -16,7 +16,10 @@
 
 package com.huaweicloud.sermant.core.plugin.agent;
 
+import com.huaweicloud.sermant.core.plugin.Plugin;
 import com.huaweicloud.sermant.core.plugin.agent.collector.PluginCollectorManager;
+
+import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 
 import java.lang.instrument.Instrumentation;
 
@@ -28,16 +31,35 @@ import java.lang.instrument.Instrumentation;
  * @since 2022-01-22
  */
 public class ByteEnhanceManager {
+    private static Instrumentation instrumentation;
+
+    private static final BufferedAgentBuilder AGENT_BUILDER = BufferedAgentBuilder.build();
+
     private ByteEnhanceManager() {
+    }
+
+    public static void init(Instrumentation instrumentation) {
+        ByteEnhanceManager.instrumentation = instrumentation;
     }
 
     /**
      * 增强字节码
-     *
-     * @param instrumentation Instrumentation对象
      */
-    public static void enhance(Instrumentation instrumentation) {
-        BufferedAgentBuilder.build().addClassLoaderEnhance().addPlugins(PluginCollectorManager.getPlugins())
+    public static void enhance() {
+        AGENT_BUILDER.addClassLoaderEnhance()
             .install(instrumentation);
+    }
+    public static void enhanceBaseClass(){
+        AGENT_BUILDER.addClassLoaderEnhance();
+    }
+
+    public static void enhanceStaticPlugin(Plugin plugin){
+        AGENT_BUILDER.addPlugins(PluginCollectorManager.getPluginDescription(plugin));
+    }
+
+    public static void enhanceDynamicPlugin(Plugin plugin) {
+        ResettableClassFileTransformer resettableClassFileTransformer = BufferedAgentBuilder.build()
+            .addPlugins(PluginCollectorManager.getPluginDescription(plugin)).install(instrumentation);
+        plugin.setResettableClassFileTransformer(resettableClassFileTransformer);
     }
 }

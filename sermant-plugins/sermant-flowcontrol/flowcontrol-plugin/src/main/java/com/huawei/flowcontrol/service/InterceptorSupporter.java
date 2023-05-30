@@ -32,6 +32,7 @@ import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
 import com.huaweicloud.sermant.core.plugin.config.PluginConfigManager;
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 
 import io.github.resilience4j.retry.RetryConfig;
@@ -110,9 +111,9 @@ public abstract class InterceptorSupporter extends ReflectMethodCacheSupport imp
             lock.lock();
             try {
                 if (flowControlConfig.getFlowFramework() == FlowFramework.SENTINEL) {
-                    dubboService = ServiceManager.getService(DubboSenService.class);
+                    dubboService = PluginServiceManager.getPluginService(DubboSenService.class);
                 } else {
-                    dubboService = ServiceManager.getService(DubboRest4jService.class);
+                    dubboService = PluginServiceManager.getPluginService(DubboRest4jService.class);
                 }
             } finally {
                 lock.unlock();
@@ -131,9 +132,9 @@ public abstract class InterceptorSupporter extends ReflectMethodCacheSupport imp
             lock.lock();
             try {
                 if (flowControlConfig.getFlowFramework() == FlowFramework.SENTINEL) {
-                    httpService = ServiceManager.getService(HttpSenService.class);
+                    httpService = PluginServiceManager.getPluginService(HttpSenService.class);
                 } else {
-                    httpService = ServiceManager.getService(HttpRest4jService.class);
+                    httpService = PluginServiceManager.getPluginService(HttpRest4jService.class);
                 }
             } finally {
                 lock.unlock();

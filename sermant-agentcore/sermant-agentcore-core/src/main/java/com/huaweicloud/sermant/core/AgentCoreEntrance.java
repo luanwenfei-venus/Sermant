@@ -24,6 +24,7 @@ import com.huaweicloud.sermant.core.event.EventManager;
 import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
 import com.huaweicloud.sermant.core.operation.OperationManager;
 import com.huaweicloud.sermant.core.plugin.PluginSystemEntrance;
+import com.huaweicloud.sermant.core.plugin.agent.ByteEnhanceManager;
 import com.huaweicloud.sermant.core.plugin.agent.adviser.Adviser;
 import com.huaweicloud.sermant.core.plugin.agent.template.CommonMethodAdviser;
 import com.huaweicloud.sermant.core.service.ServiceManager;
@@ -71,10 +72,17 @@ public class AgentCoreEntrance {
         // 初始化事件系统
         EventManager.init();
 
+        // 注册Adviser
         Adviser.registry(new CommonMethodAdviser());
 
+        // 初始化ByteEnhanceManager
+        ByteEnhanceManager.init(instrumentation);
+
         // 初始化插件
-        PluginSystemEntrance.initialize(instrumentation);
+        PluginSystemEntrance.initialize();
+
+        // 增强静态插件
+        ByteEnhanceManager.enhance();
 
         // 上报Sermant启动事件
         FrameworkEventCollector.getInstance().collectAgentStartEvent();

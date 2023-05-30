@@ -17,6 +17,7 @@
 package com.huaweicloud.sermant.router.dubbo.handler;
 
 import com.huaweicloud.sermant.core.common.LoggerFactory;
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 import com.huaweicloud.sermant.router.common.constants.RouterConstant;
 import com.huaweicloud.sermant.router.common.utils.CollectionUtils;
@@ -45,7 +46,7 @@ public class LaneContextFilterHandler extends AbstractContextFilterHandler {
      * 构造方法
      */
     public LaneContextFilterHandler() {
-        laneContextFilterService = ServiceManager.getService(LaneContextFilterService.class);
+        laneContextFilterService = PluginServiceManager.getPluginService(LaneContextFilterService.class);
     }
 
     @Override

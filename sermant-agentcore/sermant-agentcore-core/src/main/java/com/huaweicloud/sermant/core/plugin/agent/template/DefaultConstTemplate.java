@@ -57,7 +57,7 @@ public class DefaultConstTemplate {
             @Advice.Local(value = "_INTERCEPTOR_ITR_$SERMANT_LOCAL") ListIterator<?> interceptorItr,
             @Advice.Local(value = "_EXECUTE_CONTEXT_$SERMANT_LOCAL") Object context
     ) throws Throwable {
-        final String adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template.BootstrapConstTemplate_"
+        final String adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template.DefaultConstTemplate_"
                 + Integer.toHexString(methodKey.hashCode());
         interceptorItr = Adviser.getInterceptorListMap().get(adviceClsName).listIterator();
         context = ExecuteContext.forConstructor(cls, constructor, arguments, null);

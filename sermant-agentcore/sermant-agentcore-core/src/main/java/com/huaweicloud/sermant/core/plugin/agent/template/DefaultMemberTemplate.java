@@ -59,7 +59,7 @@ public class DefaultMemberTemplate {
             @Advice.Local(value = "_IS_SKIP_$SERMANT_LOCAL") Boolean isSkip
 
     ) throws Throwable {
-        final String adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template.BootstrapMemberTemplate_"
+        final String adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template.DefaultMemberTemplate_"
                 + Integer.toHexString(methodKey.hashCode());
         interceptorItr = Adviser.getInterceptorListMap().get(adviceClsName).listIterator();
         context = ExecuteContext.forMemberMethod(obj, method, arguments, null, null);

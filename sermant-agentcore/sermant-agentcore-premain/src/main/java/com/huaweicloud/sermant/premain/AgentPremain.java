@@ -22,22 +22,16 @@ import com.huaweicloud.sermant.premain.common.BootArgsBuilder;
 import com.huaweicloud.sermant.premain.common.PathDeclarer;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
-import java.net.BindException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.MissingResourceException;
 import java.util.UUID;
-import java.util.jar.JarException;
 import java.util.jar.JarFile;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
@@ -126,7 +120,6 @@ public class AgentPremain {
         for (File jar : jars) {
             list.add(jar.toURI().toURL());
         }
-        LOGGER.info("Core lib count: " + list.size());
         return list.toArray(new URL[] {});
     }
 

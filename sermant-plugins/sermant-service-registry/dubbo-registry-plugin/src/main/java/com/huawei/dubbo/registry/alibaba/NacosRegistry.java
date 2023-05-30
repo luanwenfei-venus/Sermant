@@ -18,6 +18,7 @@ package com.huawei.dubbo.registry.alibaba;
 
 import com.huawei.dubbo.registry.service.nacos.NacosRegistryService;
 
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 
 import com.alibaba.dubbo.common.URL;
@@ -40,7 +41,7 @@ public class NacosRegistry extends FailbackRegistry {
      */
     public NacosRegistry(URL url) {
         super(url);
-        registryService = ServiceManager.getService(NacosRegistryService.class);
+        registryService = PluginServiceManager.getPluginService(NacosRegistryService.class);
     }
 
     @Override

@@ -16,9 +16,21 @@
 
 package com.huaweicloud.sermant.core.plugin.config;
 
+import static com.huaweicloud.sermant.core.plugin.common.PluginConstant.CONFIG_DIR_NAME;
+import static com.huaweicloud.sermant.core.plugin.common.PluginConstant.CONFIG_FILE_NAME;
+
+import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.config.ConfigManager;
+import com.huaweicloud.sermant.core.config.common.BaseConfig;
+import com.huaweicloud.sermant.core.config.utils.ConfigKeyUtil;
+import com.huaweicloud.sermant.core.plugin.Plugin;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.logging.Logger;
 
 /**
  * 插件配置管理器，${ConfigManager}统一配置管理器的特化，专门用来加载插件包配置和插件服务包配置
@@ -27,15 +39,42 @@ import java.io.File;
  * @version 1.0.0
  * @since 2021-11-12
  */
-public class PluginConfigManager extends ConfigManager {
+public class PluginConfigManager {
     /**
-     * 加载插件服务包配置
-     *
-     * @param configFile  配置文件夹
-     * @param classLoader 加载插件服务包的类加载器
+     * 日志
      */
-    public static void loadServiceConfig(File configFile, ClassLoader classLoader) {
-        loadConfig(configFile, PluginConfig.class, classLoader);
+    private static final Logger LOGGER = LoggerFactory.getLogger();
+
+    /**
+     * 配置对象集合，键为配置对象的实现类Class，值为加载完毕的配置对象
+     */
+    private static final Map<String, BaseConfig> CONFIG_MAP = new HashMap<>();
+
+    public static void loadPluginConfig(Plugin plugin) {
+        File pluginConfigFile = getPluginConfigFile(plugin.getPath());
+        ClassLoader classLoader =
+            plugin.getServiceClassLoader() != null ? plugin.getServiceClassLoader() : plugin.getPluginClassLoader();
+        for (BaseConfig config : ServiceLoader.load(PluginConfig.class, classLoader)) {
+            final String typeKey = ConfigKeyUtil.getTypeKey(config.getClass());
+            final BaseConfig retainedConfig = CONFIG_MAP.get(typeKey);
+            if (pluginConfigFile.exists() && pluginConfigFile.isFile()) {
+                if (retainedConfig == null) {
+                    CONFIG_MAP.put(typeKey, ConfigManager.doLoad(pluginConfigFile, config));
+                    plugin.getConfigList().add(typeKey);
+                } else if (retainedConfig.getClass() == config.getClass()) {
+                    LOGGER.fine(
+                        String.format(Locale.ROOT, "Skip load config [%s] repeatedly. ", config.getClass().getName()));
+                } else {
+                    LOGGER.warning(String.format(Locale.ROOT, "Type key of %s is %s,  same as %s's. ",
+                        config.getClass().getName(), typeKey, retainedConfig.getClass().getName()));
+                }
+            } else {
+                if (!CONFIG_MAP.containsKey(typeKey)) {
+                    CONFIG_MAP.put(typeKey, config);
+                    plugin.getConfigList().add(typeKey);
+                }
+            }
+        }
     }
 
     /**
@@ -46,6 +85,16 @@ public class PluginConfigManager extends ConfigManager {
      * @return 插件配置实例
      */
     public static <R extends PluginConfig> R getPluginConfig(Class<R> cls) {
-        return getConfig(cls);
+        return (R)CONFIG_MAP.get(ConfigKeyUtil.getTypeKey(cls));
+    }
+
+    /**
+     * 获取插件配置文件
+     *
+     * @param pluginPath 插件根目录
+     * @return 插件配置文件
+     */
+    public static File getPluginConfigFile(String pluginPath) {
+        return new File(pluginPath + File.separatorChar + CONFIG_DIR_NAME + File.separatorChar + CONFIG_FILE_NAME);
     }
 }

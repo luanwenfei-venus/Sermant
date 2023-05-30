@@ -35,14 +35,16 @@ public interface PluginCollector {
     /**
      * 获取插件声明器的集合
      *
+     * @param classLoader 各个插件的类加载器
      * @return 插件声明器的集合
      */
-    Iterable<? extends PluginDeclarer> getDeclarers();
+    Iterable<? extends PluginDeclarer> getDeclarers(ClassLoader classLoader);
 
     /**
      * 获取插件描述器的集合
      *
+     * @param classLoader 各个插件的类加载器
      * @return 描述器的集合
      */
-    Iterable<? extends PluginDescription> getDescriptions();
+    Iterable<? extends PluginDescription> getDescriptions(ClassLoader classLoader);
 }

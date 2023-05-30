@@ -34,11 +34,6 @@ public class PluginSetting {
     private Set<String> plugins;
 
     /**
-     * 适配器名称集
-     */
-    private List<String> adaptors;
-
-    /**
      * 场景与插件映射关系
      */
     private Map<String, Set<String>> profiles;
@@ -54,14 +49,6 @@ public class PluginSetting {
 
     public void setPlugins(Set<String> plugins) {
         this.plugins = plugins;
-    }
-
-    public List<String> getAdaptors() {
-        return adaptors;
-    }
-
-    public void setAdaptors(List<String> adaptors) {
-        this.adaptors = adaptors;
     }
 
     public void setProfiles(Map<String, Set<String>> profiles) {

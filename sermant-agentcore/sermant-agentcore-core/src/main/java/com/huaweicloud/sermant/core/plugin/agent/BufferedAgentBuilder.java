@@ -283,8 +283,9 @@ public class BufferedAgentBuilder {
                         try {
                             return classLoaderDeclarer.getClassMatcher().matches(target);
                         } catch (Exception exception) {
-                            LOGGER.log(Level.WARNING, "Exception occur when math target: " + target.getActualName(),
-                                exception);
+                            LOGGER.log(Level.WARNING,
+                                    "Exception occur when math target: " + target.getActualName() + ",{0}",
+                                exception.getMessage());
                             return false;
                         }
                     }
@@ -316,7 +317,7 @@ public class BufferedAgentBuilder {
     public ResettableClassFileTransformer install(Instrumentation instrumentation) {
         AgentBuilder builder = new Default().disableClassFormatChanges();
         /**
-         * todo：
+         * todo：新建自定义的ClassFileLocator用于避免Can not resolve class的情况
          * builder = builder.with(
          * new Compound((classLoader, module) -> new UserDefineClassFileLocator(classLoader), ForClassLoader.STRONG));
          */
@@ -357,6 +358,7 @@ public class BufferedAgentBuilder {
         }
 
         private boolean checkClassLoader(TypeDescription typeDesc, ClassLoader classLoader) {
+            // todo 此处可能还需要加一个，判断是否为PluginClassLoader
             if (classLoader instanceof FrameworkClassLoader) {
                 return true;
             }

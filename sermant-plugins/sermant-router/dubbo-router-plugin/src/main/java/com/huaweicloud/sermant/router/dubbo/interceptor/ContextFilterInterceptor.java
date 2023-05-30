@@ -18,6 +18,7 @@ package com.huaweicloud.sermant.router.dubbo.interceptor;
 
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.AbstractInterceptor;
+import com.huaweicloud.sermant.core.plugin.service.PluginServiceManager;
 import com.huaweicloud.sermant.core.service.ServiceManager;
 import com.huaweicloud.sermant.router.common.handler.Handler;
 import com.huaweicloud.sermant.router.common.utils.CollectionUtils;
@@ -52,7 +53,7 @@ public class ContextFilterInterceptor extends AbstractInterceptor {
         handlers.add(new LaneContextFilterHandler());
         handlers.add(new RouteContextFilterHandler());
         handlers.sort(Comparator.comparingInt(Handler::getOrder));
-        configService = ServiceManager.getService(DubboConfigService.class);
+        configService = PluginServiceManager.getPluginService(DubboConfigService.class);
     }
 
     @Override

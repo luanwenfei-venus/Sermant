@@ -60,14 +60,4 @@ public class PluginConstant {
      * sermant插件默认版本
      */
     public static final String PLUGIN_DEFAULT_VERSION = "unknown";
-
-    /**
-     * 获取插件配置文件
-     *
-     * @param pluginPath 插件根目录
-     * @return 插件配置文件
-     */
-    public static File getPluginConfigFile(String pluginPath) {
-        return new File(pluginPath + File.separatorChar + CONFIG_DIR_NAME + File.separatorChar + CONFIG_FILE_NAME);
-    }
 }

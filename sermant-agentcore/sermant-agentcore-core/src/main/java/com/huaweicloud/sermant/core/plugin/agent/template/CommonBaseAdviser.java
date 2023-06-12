@@ -20,8 +20,10 @@ import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
 
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,7 +37,29 @@ import java.util.logging.Logger;
 public class CommonBaseAdviser {
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
-    private CommonBaseAdviser() {}
+    private static final ConcurrentHashMap<String, List<Interceptor>> INTERCEPTOR_LIST_MAP = new ConcurrentHashMap<>();
+
+    private CommonBaseAdviser() {
+    }
+
+    public static ExecuteContext onMethodEnter(ExecuteContext context, String adviceClassName,
+        ExceptionHandler beforeHandler) throws Throwable {
+        List<Interceptor> interceptorList = INTERCEPTOR_LIST_MAP.get(adviceClassName);
+        if (interceptorList == null) {
+            return context;
+        }
+        context.setInterceptorIterator(interceptorList.listIterator());
+        return onMethodEnter(context, context.getInterceptorIterator(), beforeHandler);
+    }
+
+    public static ExecuteContext onMethodExit(ExecuteContext context, String adviceClassName,
+        ExceptionHandler onThrowHandler, ExceptionHandler afterHandler) throws Throwable {
+        List<Interceptor> interceptorList = INTERCEPTOR_LIST_MAP.get(adviceClassName);
+        if (interceptorList == null) {
+            return context;
+        }
+        return onMethodExit(context, context.getInterceptorIterator(), onThrowHandler, afterHandler);
+    }
 
     /**
      * 前置触发点
@@ -132,6 +156,11 @@ public class CommonBaseAdviser {
             }
         }
         return newContext;
+    }
+
+    public static ConcurrentHashMap<String, List<Interceptor>> getInterceptorListMap() {
+        // todo 针对该Map做清理可能会涉及线程安全问题
+        return INTERCEPTOR_LIST_MAP;
     }
 
     /**

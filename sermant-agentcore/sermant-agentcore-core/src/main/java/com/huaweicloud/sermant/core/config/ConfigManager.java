@@ -24,7 +24,9 @@ import com.huaweicloud.sermant.core.config.strategy.LoadConfigStrategy;
 import com.huaweicloud.sermant.core.config.utils.ConfigKeyUtil;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -49,11 +51,15 @@ public abstract class ConfigManager {
      * <p>通过{@link #getConfig(Class)}方法获取配置对象
      */
     private static final Map<String, BaseConfig> CONFIG_MAP = new HashMap<String, BaseConfig>();
+    
+    private static final List<LoadConfigStrategy> LOAD_CONFIG_STRATEGIES = new ArrayList<>();
 
-    private static final Iterable<LoadConfigStrategy> LOAD_CONFIG_STRATEGIES =
-        ServiceLoader.load(LoadConfigStrategy.class, ClassLoaderManager.getFrameworkClassLoader());
+    private static Map<String, Object> argsMap;
 
-    private static Map<String, Object> argsMap = null;
+    public static void shutdown(){
+        CONFIG_MAP.clear();
+        LOAD_CONFIG_STRATEGIES.clear();
+    }
 
     /**
      * 通过配置对象类型获取配置对象
@@ -84,6 +90,10 @@ public abstract class ConfigManager {
      */
     public static synchronized void initialize(Map<String, Object> args) {
         argsMap = args;
+        for (LoadConfigStrategy<?> strategy : ServiceLoader.load(LoadConfigStrategy.class,
+            ClassLoaderManager.getFrameworkClassLoader())) {
+            LOAD_CONFIG_STRATEGIES.add(strategy);
+        }
         loadConfig(BootArgsIndexer.getConfigFile(), BaseConfig.class, ClassLoaderManager.getSermantClassLoader());
     }
 

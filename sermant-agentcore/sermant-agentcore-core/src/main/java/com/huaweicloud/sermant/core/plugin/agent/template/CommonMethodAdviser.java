@@ -21,7 +21,6 @@ import com.huaweicloud.sermant.core.plugin.agent.adviser.AdviserInterface;
 import com.huaweicloud.sermant.core.plugin.agent.entity.ExecuteContext;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
 
-import java.util.ListIterator;
 import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,12 +33,10 @@ import java.util.logging.Logger;
  * @since 2022-01-24
  */
 public class CommonMethodAdviser implements AdviserInterface {
-    /**
-     * 日志
-     */
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
-    public CommonMethodAdviser() {}
+    public CommonMethodAdviser() {
+    }
 
     /**
      * 输出错误日志
@@ -54,17 +51,9 @@ public class CommonMethodAdviser implements AdviserInterface {
             MethodKeyCreator.getMethodKey(context.getMethod()), interceptor.getClass().getName()), throwable);
     }
 
-    /**
-     * 调用方法的前置触发点
-     *
-     * @param context 执行上下文
-     * @param interceptorItr 拦截器双向迭代器
-     * @return 执行上下文
-     * @throws Throwable 抛给宿主的异常
-     */
-    public ExecuteContext onMethodEnter(ExecuteContext context, ListIterator<Interceptor> interceptorItr)
-        throws Throwable {
-        return CommonBaseAdviser.onMethodEnter(context, interceptorItr, new CommonBaseAdviser.ExceptionHandler() {
+    @Override
+    public ExecuteContext onMethodEnter(ExecuteContext context, String adviceClassName) throws Throwable {
+        return CommonBaseAdviser.onMethodEnter(context, adviceClassName, new CommonBaseAdviser.ExceptionHandler() {
             @Override
             public void handle(ExecuteContext context, Interceptor interceptor, Throwable throwable) {
                 logError("before executing", context, interceptor, throwable);
@@ -72,17 +61,9 @@ public class CommonMethodAdviser implements AdviserInterface {
         });
     }
 
-    /**
-     * 调用方法的后置触发点
-     *
-     * @param context 执行上下文
-     * @param interceptorItr 拦截器双向迭代器
-     * @return 执行上下文
-     * @throws Throwable 抛给宿主的异常
-     */
-    public ExecuteContext onMethodExit(ExecuteContext context, ListIterator<Interceptor> interceptorItr)
-        throws Throwable {
-        return CommonBaseAdviser.onMethodExit(context, interceptorItr, new CommonBaseAdviser.ExceptionHandler() {
+    @Override
+    public ExecuteContext onMethodExit(ExecuteContext context, String adviceClassName) throws Throwable {
+        return CommonBaseAdviser.onMethodExit(context, adviceClassName, new CommonBaseAdviser.ExceptionHandler() {
             @Override
             public void handle(ExecuteContext context, Interceptor interceptor, Throwable throwable) {
                 logError("while handling error from", context, interceptor, throwable);

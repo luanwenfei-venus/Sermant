@@ -16,17 +16,17 @@ public interface AdviserInterface {
      * 调用方法的前置触发点
      *
      * @param context 执行上下文
-     * @param interceptorItr 拦截器双向迭代器
+     * @param adviceClassName 被增强类名
      * @return 执行上下文
      */
-    ExecuteContext onMethodEnter(ExecuteContext context, ListIterator<Interceptor> interceptorItr) throws Throwable;
+    ExecuteContext onMethodEnter(ExecuteContext context, String adviceClassName) throws Throwable;
 
     /**
      * 调用方法的后置触发点
      *
      * @param context 执行上下文
-     * @param interceptorItr 拦截器双向迭代器
+     * @param adviceClassName 被增强类名
      * @return 执行上下文
      */
-    ExecuteContext onMethodExit(ExecuteContext context, ListIterator<Interceptor> interceptorItr) throws Throwable;
+    ExecuteContext onMethodExit(ExecuteContext context, String adviceClassName) throws Throwable;
 }

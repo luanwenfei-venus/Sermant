@@ -11,6 +11,14 @@ plugins:
   - service-removal
   - service-visibility
 
+# 可动态挂载插件，会单独创建独立的Transformer
+# active下插件将会在动态挂载时启用
+dynamicPlugins:
+  active:
+    - active-plugin
+  passive:
+    - passive-plugin
+
 # 基于场景加载插件，每个场景会有对应的插件组
 profiles:
   cse:
@@ -22,7 +30,3 @@ profiles:
     - flowcontrol
     - service-router
 profile: cse,apm
-
-# 可动态挂载插件，会单独创建独立的Transformer
-dynamic-plugin:
-  - x

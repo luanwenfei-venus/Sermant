@@ -34,9 +34,9 @@ import java.util.Set;
 @ConfigTypeKey("agent.config")
 public class AgentConfig implements BaseConfig {
     /**
-     * 是否增强启动类加载器加载的类
+     * 是否开启重转换
      */
-    private boolean isEnhanceBootStrapEnable = false;
+    private boolean isReTransformEnable = false;
 
     /**
      * 增强忽略集，该集合中定义的全限定名前缀用于排除增强过程中被忽略的类，默认包含{@code com.huawei.sermant}，非强制
@@ -47,6 +47,11 @@ public class AgentConfig implements BaseConfig {
      * 增强忽略接口集，该集合中定义的接口用于排除增强过程中被忽略的类，默认包含{@org.springframework.cglib.proxy.Factory}，强制，否则会跟spring动态代理产生冲突，导致java.lang.VerifyError
      */
     private Set<String> ignoredInterfaces = Collections.singleton("org.springframework.cglib.proxy.Factory");
+
+    /**
+     * 增强的类加载器，其中的loadClass和findResource会优先通过Sermant自身的ClassLoader加载
+     */
+    private boolean isEnhanceClassLoader = false;
 
     /**
      * 是否在增强过程中输出检索日志
@@ -73,12 +78,12 @@ public class AgentConfig implements BaseConfig {
      */
     private Set<String> serviceInjectList = Collections.emptySet();
 
-    public boolean isEnhanceBootStrapEnable() {
-        return isEnhanceBootStrapEnable;
+    public boolean isReTransformEnable() {
+        return isReTransformEnable;
     }
 
-    public void setEnhanceBootStrapEnable(boolean enhanceBootStrapEnable) {
-        isEnhanceBootStrapEnable = enhanceBootStrapEnable;
+    public void setReTransformEnable(boolean reTransformEnable) {
+        isReTransformEnable = reTransformEnable;
     }
 
     public Set<String> getIgnoredPrefixes() {
@@ -87,6 +92,14 @@ public class AgentConfig implements BaseConfig {
 
     public Set<String> getIgnoredInterfaces() {
         return ignoredInterfaces;
+    }
+
+    public boolean isEnhanceClassLoader() {
+        return isEnhanceClassLoader;
+    }
+
+    public void setEnhanceClassLoader(boolean enhanceClassLoader) {
+        isEnhanceClassLoader = enhanceClassLoader;
     }
 
     public void setIgnoredInterfaces(Set<String> ignoredInterfaces) {

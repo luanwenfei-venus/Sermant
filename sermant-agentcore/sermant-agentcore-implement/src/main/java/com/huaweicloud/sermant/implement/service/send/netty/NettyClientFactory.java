@@ -61,12 +61,15 @@ public class NettyClientFactory {
      */
     public synchronized NettyClient getNettyClient(String serverIp, int serverPort) {
         String address = serverIp + ":" + serverPort;
-        if (CLIENT_MAP.containsKey(address)) {
-            return CLIENT_MAP.get(address);
+
+        NettyClient nettyClient = CLIENT_MAP.get(address);
+
+        if (nettyClient != null && !nettyClient.isStop()) {
+            return nettyClient;
         }
 
-        NettyClient client = new NettyClient(serverIp, serverPort);
-        refreshClientMap(address, client);
-        return client;
+        nettyClient = new NettyClient(serverIp, serverPort);
+        refreshClientMap(address, nettyClient);
+        return nettyClient;
     }
 }

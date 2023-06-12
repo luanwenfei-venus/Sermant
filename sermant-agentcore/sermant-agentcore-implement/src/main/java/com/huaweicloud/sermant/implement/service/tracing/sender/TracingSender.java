@@ -51,8 +51,7 @@ public class TracingSender {
     private static final ArrayBlockingQueue<SpanEvent> SPAN_EVENT_DATA_QUEUE =
             new ArrayBlockingQueue<>(MAX_SPAN_EVENT_COUNT);
 
-    private static final ExecutorService EXECUTOR =
-            Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "tracing-sender-thread"));
+    private static ExecutorService EXECUTOR;
 
     private static TracingSender tracingSender = null;
 
@@ -88,6 +87,7 @@ public class TracingSender {
         }
         this.isSending = true;
         gatewayClient = ServiceManager.getService(GatewayClient.class);
+        EXECUTOR = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "tracing-sender-thread"));
         EXECUTOR.execute(new SpanEventSendThread());
     }
 
@@ -121,6 +121,9 @@ public class TracingSender {
         }
         SPAN_EVENT_DATA_QUEUE.clear();
         this.isSending = false;
+        EXECUTOR.shutdownNow();
+        EXECUTOR = null;
+        gatewayClient = null;
     }
 
     /**

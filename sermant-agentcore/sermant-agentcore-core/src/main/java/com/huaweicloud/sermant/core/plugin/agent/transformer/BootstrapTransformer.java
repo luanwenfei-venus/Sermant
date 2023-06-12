@@ -23,6 +23,7 @@ import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
 import com.huaweicloud.sermant.core.plugin.agent.template.BootstrapConstTemplate;
 import com.huaweicloud.sermant.core.plugin.agent.template.BootstrapMemberTemplate;
 import com.huaweicloud.sermant.core.plugin.agent.template.BootstrapStaticTemplate;
+import com.huaweicloud.sermant.core.plugin.agent.template.CommonBaseAdviser;
 import com.huaweicloud.sermant.core.plugin.agent.template.MethodKeyCreator;
 import com.huaweicloud.sermant.core.utils.ClassLoaderUtils;
 
@@ -230,10 +231,10 @@ public class BootstrapTransformer implements AgentBuilder.Transformer {
             List<Interceptor> interceptors, Class<?> templateCls)
             throws InvocationTargetException, IllegalAccessException, NoSuchMethodException, NoSuchFieldException {
         final String adviceClassName = getAdviceClassName(templateCls, methodDesc);
-        List<Interceptor> globalInterceptors = Adviser.getInterceptorListMap().get(adviceClassName);
+        List<Interceptor> globalInterceptors = CommonBaseAdviser.getInterceptorListMap().get(adviceClassName);
         if (globalInterceptors == null) {
             globalInterceptors = new ArrayList<>(interceptors);
-            Adviser.getInterceptorListMap().put(adviceClassName, globalInterceptors);
+            CommonBaseAdviser.getInterceptorListMap().put(adviceClassName, globalInterceptors);
             return builder.visit(Advice.to(templateCls).on(ElementMatchers.is(methodDesc)));
         } else {
             globalInterceptors.addAll(interceptors);

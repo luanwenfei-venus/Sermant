@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.instrument.Instrumentation;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
@@ -57,23 +58,37 @@ public class PluginSystemEntrance {
      */
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
-    private static final YamlConverter YAML_CONVERTER = OperationManager.getOperation(YamlConverter.class);
-
     private PluginSystemEntrance() {
     }
-
+    
     /**
-     * 初始化插件相关的内容
+     * 初始化插件相关的内容,区分是否为动态挂载场景
+     * dynamicInstall->true 仅加载支持动态安装的插件，默认不启动，通过下发指令启动插件
+     * dynamicInstall->true 加载支持静态安装的插件，默认启动；加载支持动态安装的插件，默认不启动，通过下发指令启动插件
+     * 
+     * @param dynamicInstall 是否为动态安装，基于premain方式启动及agentmain方式启动来判断
      */
-    public static void initialize() {
+    public static void initialize(boolean dynamicInstall) {
         final PluginSetting pluginSetting = loadSetting();
-        Set<String> plugins = getLoadPlugins(pluginSetting);
-        if (plugins == null) {
-            LOGGER.info("No plugin is configured to be loaded.");
-            return;
+        Set<String> staticPlugins = pluginSetting.getPlugins();
+        Set<String> activeDynamicPlugins = pluginSetting.getDynamicPlugins().get("active");
+        if (!dynamicInstall) {
+            if (staticPlugins != null) {
+                PluginManager.initPlugins(staticPlugins, false);
+            } else {
+                LOGGER.info("No static-support-plugin is configured to be loaded.");
+            }
         }
-        PluginManager.initPlugins(plugins);
+
+        // 加载支持动态安装的插件
+        if (activeDynamicPlugins != null) {
+            PluginManager.initPlugins(activeDynamicPlugins, true);
+        } else {
+            LOGGER.info("No dynamic-support-plugin is configured to be loaded.");
+        }
     }
+    
+    
 
     /**
      * 加载插件设定配置，获取所有需要加载的插件文件夹
@@ -83,9 +98,10 @@ public class PluginSystemEntrance {
     private static PluginSetting loadSetting() {
         Reader reader = null;
         try {
-            reader = new InputStreamReader(new FileInputStream(BootArgsIndexer.getPluginSettingFile()),
-                    CommonConstant.DEFAULT_CHARSET);
-            Optional<PluginSetting> pluginSettingOptional = YAML_CONVERTER.convert(reader, PluginSetting.class);
+            reader = new InputStreamReader(Files.newInputStream(BootArgsIndexer.getPluginSettingFile().toPath()),
+                CommonConstant.DEFAULT_CHARSET);
+            Optional<PluginSetting> pluginSettingOptional =
+                OperationManager.getOperation(YamlConverter.class).convert(reader, PluginSetting.class);
             return pluginSettingOptional.orElse(null);
         } catch (IOException ignored) {
             LOGGER.warning("Plugin setting file is not found. ");

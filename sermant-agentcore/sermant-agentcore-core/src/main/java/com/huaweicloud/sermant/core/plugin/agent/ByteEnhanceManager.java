@@ -16,12 +16,20 @@
 
 package com.huaweicloud.sermant.core.plugin.agent;
 
+import com.huaweicloud.sermant.core.config.ConfigManager;
 import com.huaweicloud.sermant.core.plugin.Plugin;
 import com.huaweicloud.sermant.core.plugin.agent.collector.PluginCollectorManager;
+import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig;
+import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDescription;
 
+import net.bytebuddy.agent.builder.AgentBuilder;
+import net.bytebuddy.agent.builder.AgentBuilder.RedefinitionStrategy;
+import net.bytebuddy.agent.builder.AgentBuilder.RedefinitionStrategy.BatchAllocator.ForTotal;
+import net.bytebuddy.agent.builder.AgentBuilder.RedefinitionStrategy.DiscoveryStrategy.Reiterating;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 
 import java.lang.instrument.Instrumentation;
+import java.util.List;
 
 /**
  * 字节码增强管理器
@@ -33,33 +41,71 @@ import java.lang.instrument.Instrumentation;
 public class ByteEnhanceManager {
     private static Instrumentation instrumentation;
 
-    private static final BufferedAgentBuilder AGENT_BUILDER = BufferedAgentBuilder.build();
+    private static BufferedAgentBuilder AGENT_BUILDER;
 
     private ByteEnhanceManager() {
     }
 
     public static void init(Instrumentation instrumentation) {
         ByteEnhanceManager.instrumentation = instrumentation;
+        AGENT_BUILDER = BufferedAgentBuilder.build();
+        AGENT_BUILDER.setPlugin(new Plugin(null, null, false, null));
+
     }
 
     /**
-     * 增强字节码
+     * 安装增强字节码，仅用于premain方式启动
      */
     public static void enhance() {
-        AGENT_BUILDER.addClassLoaderEnhance()
-            .install(instrumentation);
-    }
-    public static void enhanceBaseClass(){
-        AGENT_BUILDER.addClassLoaderEnhance();
+        enhanceBaseClass();
+        AGENT_BUILDER.install(instrumentation);
     }
 
-    public static void enhanceStaticPlugin(Plugin plugin){
-        AGENT_BUILDER.addPlugins(PluginCollectorManager.getPluginDescription(plugin));
+    /**
+     * 引入一些对基础类的字节码增强增强
+     */
+    public static void enhanceBaseClass() {
+        if (ConfigManager.getConfig(AgentConfig.class).isEnhanceClassLoader()) {
+            AGENT_BUILDER.addClassLoaderEnhance();
+        }
     }
 
+    /**
+     * 基于支持静态安装的插件进行字节码增强
+     *
+     * @param plugin 支持静态安装的插件
+     */
+    public static void enhanceStaticPlugin(Plugin plugin) {
+        AGENT_BUILDER.addPlugins(PluginCollectorManager.getPluginDescription(plugin, AGENT_BUILDER));
+    }
+
+    /**
+     * 基于支持动态安装的插件进行字节码增强
+     *
+     * @param plugin 支持动态安装的插件
+     */
     public static void enhanceDynamicPlugin(Plugin plugin) {
-        ResettableClassFileTransformer resettableClassFileTransformer = BufferedAgentBuilder.build()
-            .addPlugins(PluginCollectorManager.getPluginDescription(plugin)).install(instrumentation);
+        if (!plugin.isDynamicSupport()) {
+            return;
+        }
+        BufferedAgentBuilder builder = BufferedAgentBuilder.build();
+        builder.setPlugin(plugin);
+        List<PluginDescription> plugins = PluginCollectorManager.getPluginDescription(plugin,builder);
+        ResettableClassFileTransformer resettableClassFileTransformer = builder
+                .addPlugins(plugins).install(instrumentation);
         plugin.setResettableClassFileTransformer(resettableClassFileTransformer);
+    }
+
+    /**
+     * 取消支持动态安装的插件的字节码增强
+     * @param plugin 支持动态安装的插件
+     */
+    public static void unEnhanceDynamicPlugin(Plugin plugin) {
+        if (!plugin.isDynamicSupport()) {
+            return;
+        }
+        plugin.getResettableClassFileTransformer().reset(instrumentation, RedefinitionStrategy.RETRANSFORMATION,
+                Reiterating.INSTANCE, ForTotal.INSTANCE,
+                AgentBuilder.RedefinitionStrategy.Listener.StreamWriting.toSystemOut());
     }
 }

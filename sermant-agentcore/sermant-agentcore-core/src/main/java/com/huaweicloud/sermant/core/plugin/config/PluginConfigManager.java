@@ -77,6 +77,10 @@ public class PluginConfigManager {
         }
     }
 
+    public static void removeConfig(String configName){
+        CONFIG_MAP.remove(configName);
+    }
+
     /**
      * 插件端专用的获取配置方法，当插件配置文件不存在时，插件配置将会不初始化出来，该方法将针对这一情况返回一个默认对象
      *

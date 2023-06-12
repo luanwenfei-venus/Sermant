@@ -1,17 +1,14 @@
 /*
  * Copyright (C) 2022-2022 Huawei Technologies Co., Ltd. All rights reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package com.huaweicloud.sermant.premain;
@@ -20,6 +17,7 @@ import com.huaweicloud.sermant.god.common.SermantClassLoader;
 import com.huaweicloud.sermant.god.common.SermantManager;
 import com.huaweicloud.sermant.premain.common.BootArgsBuilder;
 import com.huaweicloud.sermant.premain.common.PathDeclarer;
+import com.huaweicloud.sermant.premain.common.SermantConstant;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -31,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.jar.JarFile;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
@@ -45,13 +42,12 @@ import java.util.logging.Logger;
  * @author luanwenfei
  * @since 2022-03-26
  */
-public class AgentPremain {
+public class AgentLauncher {
     private static final Logger LOGGER = getLogger();
 
     private static boolean installFlag = false;
 
-    private AgentPremain() {
-    }
+    private AgentLauncher() {}
 
     /**
      * premain
@@ -60,7 +56,7 @@ public class AgentPremain {
      * @param instrumentation instrumentation
      */
     public static void premain(String agentArgs, Instrumentation instrumentation) {
-        launchAgent(agentArgs, instrumentation);
+        launchAgent(agentArgs, instrumentation, false);
     }
 
     /**
@@ -70,34 +66,40 @@ public class AgentPremain {
      * @param instrumentation instrumentation
      */
     public static void agentmain(String agentArgs, Instrumentation instrumentation) {
-        launchAgent(agentArgs, instrumentation);
+        launchAgent(agentArgs, instrumentation, true);
     }
 
-    private static void launchAgent(String agentArgs, Instrumentation instrumentation) {
+    private static void launchAgent(String agentArgs, Instrumentation instrumentation, Boolean dynamicInstall) {
         try {
             if (!installFlag) {
                 // 添加引导库
-                LOGGER.info("Loading god library into BootstrapClassLoader... ");
+                LOGGER.info("Loading god library into BootstrapClassLoader.");
                 loadGodLib(instrumentation);
                 installFlag = true;
             }
 
-            // 添加核心库
-            LOGGER.info("Loading core library into SermantClassLoader... ");
-            String namespace = UUID.randomUUID().toString();
-            SermantClassLoader sermantClassLoader = SermantManager.createSermant(namespace, loadCoreLib());
-
             // 初始化启动参数
-            LOGGER.info("Building argument map... ");
+            LOGGER.info("Building argument map by agent arguments.");
             final Map<String, Object> argsMap = BootArgsBuilder.build(agentArgs);
+            String artifact = (String)argsMap.get(SermantConstant.ARTIFACT_NAME_KEY);
+            
+            if (SermantManager.checkSermantStatus(artifact)) {
+                LOGGER.info("Sermant for artifact is running， artifact is: " + artifact);
+                return;
+            }
+            // 添加核心库
+            LOGGER.info("Loading core library into SermantClassLoader.");
+            SermantClassLoader sermantClassLoader = SermantManager.createSermant(artifact, loadCoreLib());
 
             // agent core入口
-            LOGGER.info("Loading sermant agent... ");
+            LOGGER.info("Loading sermant agent, artifact is: " + artifact);
             sermantClassLoader.loadClass("com.huaweicloud.sermant.core.AgentCoreEntrance")
-                .getDeclaredMethod("run", Map.class, Instrumentation.class).invoke(null, argsMap, instrumentation);
-            LOGGER.info("Load sermant done.Namespace is: " + namespace);
+                .getDeclaredMethod("install", String.class, Map.class, Instrumentation.class, boolean.class)
+                .invoke(null, artifact, argsMap, instrumentation, dynamicInstall);
+            LOGGER.info("Load sermant done， artifact is: " + artifact);
+            SermantManager.updateSermantStatus(artifact,true);
         } catch (OutOfMemoryError | StackOverflowError | Exception e) {
-            LOGGER.log(Level.SEVERE, "Loading sermant agent failed.");
+            LOGGER.log(Level.SEVERE, "Loading sermant agent failed.", e);
             e.printStackTrace();
         }
     }
@@ -155,6 +157,9 @@ public class AgentPremain {
     }
 
     public static Logger getLogger() {
+        if (LOGGER != null) {
+            return LOGGER;
+        }
         final Logger logger = Logger.getLogger("sermant.agent");
         final ConsoleHandler handler = new ConsoleHandler();
         final String lineSeparator = System.getProperty("line.separator");

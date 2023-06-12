@@ -16,7 +16,7 @@
 
 package com.huaweicloud.sermant.premain.common;
 
-import static com.huaweicloud.sermant.premain.AgentPremain.getLogger;
+import static com.huaweicloud.sermant.premain.AgentLauncher.getLogger;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -107,7 +107,12 @@ public abstract class BootArgsBuilder {
      * @param configMap 配置集
      */
     private static void addNotNullEntries(Map<String, Object> argsMap, Properties configMap) {
-        String key = SermantConstant.APP_NAME_KEY;
+        String key = SermantConstant.ARTIFACT_NAME_KEY;
+        if (!argsMap.containsKey(key)) {
+            final String value = getCommonValue(key, configMap);
+            argsMap.put(key, value == null ? "default" : value);
+        }
+        key = SermantConstant.APP_NAME_KEY;
         if (!argsMap.containsKey(key)) {
             final String value = getCommonValue(key, configMap);
             argsMap.put(key, value == null ? "default" : value);

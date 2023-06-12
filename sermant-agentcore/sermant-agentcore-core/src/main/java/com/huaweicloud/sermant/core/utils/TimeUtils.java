@@ -37,27 +37,27 @@ public class TimeUtils {
     private TimeUtils() {
     }
 
-    static {
-        currentTimeMillis = System.currentTimeMillis();
-        Thread daemon = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    synchronized (obj) {
-                        currentTimeMillis = System.currentTimeMillis();
-                        try {
-                            TimeUnit.MILLISECONDS.sleep(1);
-                        } catch (InterruptedException e) {
-                            LOGGER.severe(e.getMessage());
-                        }
-                    }
-                }
-            }
-        });
-        daemon.setDaemon(true);
-        daemon.setName("sentinel-time-tick-thread");
-        daemon.start();
-    }
+//    static {
+//        currentTimeMillis = System.currentTimeMillis();
+//        Thread daemon = new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                while (true) {
+//                    synchronized (obj) {
+//                        currentTimeMillis = System.currentTimeMillis();
+//                        try {
+//                            TimeUnit.MILLISECONDS.sleep(1);
+//                        } catch (InterruptedException e) {
+//                            LOGGER.severe(e.getMessage());
+//                        }
+//                    }
+//                }
+//            }
+//        });
+//        daemon.setDaemon(true);
+//        daemon.setName("sentinel-time-tick-thread");
+//        daemon.start();
+//    }
 
     /**
      * currentTimeMillis
@@ -65,6 +65,6 @@ public class TimeUtils {
      * @return long
      */
     public static long currentTimeMillis() {
-        return currentTimeMillis;
+        return System.currentTimeMillis();
     }
 }

@@ -21,7 +21,10 @@ import com.huaweicloud.sermant.core.common.BootArgsIndexer;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
 import com.huaweicloud.sermant.core.exception.SchemaException;
+import com.huaweicloud.sermant.core.plugin.agent.BufferedAgentBuilder;
 import com.huaweicloud.sermant.core.plugin.agent.ByteEnhanceManager;
+import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
+import com.huaweicloud.sermant.core.plugin.agent.template.CommonBaseAdviser;
 import com.huaweicloud.sermant.core.plugin.common.PluginConstant;
 import com.huaweicloud.sermant.core.plugin.common.PluginSchemaValidator;
 import com.huaweicloud.sermant.core.plugin.config.PluginConfigManager;
@@ -40,6 +43,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -67,7 +71,7 @@ public class PluginManager {
      *
      * @param pluginNames 插件名称集
      */
-    public static void initPlugins(Set<String> pluginNames) {
+    public static void initPlugins(Set<String> pluginNames, boolean dynamicSupport) {
         if (pluginNames == null || pluginNames.isEmpty()) {
             return;
         }
@@ -79,11 +83,15 @@ public class PluginManager {
             return;
         }
         for (String pluginName : pluginNames) {
+            if (PLUGIN_MAP.containsKey(pluginName)) {
+                LOGGER.log(Level.WARNING, "Plugin: {0} hsa bean installed. It cannot be loaded repeatedly.", pluginName);
+                continue;
+            }
             try {
-                initPlugin(pluginName, pluginPackage);
+                initPlugin(pluginName, dynamicSupport, pluginPackage);
             } catch (Exception ex) {
                 LOGGER.log(Level.SEVERE,
-                    String.format(Locale.ENGLISH, "load plugin failed, plugin name: %s", pluginName), ex);
+                    String.format(Locale.ENGLISH, "Load plugin failed, plugin name: %s", pluginName), ex);
             }
         }
     }
@@ -94,36 +102,111 @@ public class PluginManager {
      * @param pluginName 插件名称
      * @param pluginPackage 插件包路径
      */
-    private static void initPlugin(String pluginName, String pluginPackage) {
+    private static void initPlugin(String pluginName, boolean dynamicSupport, String pluginPackage) {
         final String pluginPath = pluginPackage + File.separatorChar + pluginName;
         if (!new File(pluginPath).exists()) {
-            LOGGER.severe(String.format(Locale.ROOT, "Plugin directory %s does not exist, so skip initializing %s. ",
+            LOGGER.warning(String.format(Locale.ROOT, "Plugin directory %s does not exist, so skip initializing %s. ",
                 pluginPath, pluginName));
             return;
         }
-        doInitPlugin(new Plugin(pluginName, pluginPath, ClassLoaderManager.createPluginClassLoader()));
+        doInitPlugin(new Plugin(pluginName, pluginPath, dynamicSupport, ClassLoaderManager.createPluginClassLoader()));
     }
 
     private static void doInitPlugin(Plugin plugin) {
-        ClassLoaderManager.getPluginClassFinder().addPluginClassLoader(plugin);
-        PLUGIN_MAP.put(plugin.getName(), plugin);
         loadPlugins(plugin);
-        loadService(plugin);
-        loadConfig(plugin);
-        initService(plugin);
-        setDefaultVersion(plugin.getName());
+        plugin.createServiceClassLoader(toUrls(plugin.getName(), listJars(getServiceDir(plugin.getPath()))));
+        PluginConfigManager.loadPluginConfig(plugin);
+        PluginServiceManager.initPluginService(plugin);
+
+        // 根据插件类型选择不同的字节码增强安装方式
+        if (plugin.isDynamicSupport()) {
+            ByteEnhanceManager.enhanceDynamicPlugin(plugin);
+        } else {
+            ByteEnhanceManager.enhanceStaticPlugin(plugin);
+        }
+
+        // 插件成功加载后步骤
+        PLUGIN_MAP.put(plugin.getName(), plugin);
+        PluginSchemaValidator.setDefaultVersion(plugin.getName());
+        ClassLoaderManager.getPluginClassFinder().addPluginClassLoader(plugin);
         FrameworkEventCollector.getInstance().collectPluginsLoadEvent(plugin.getName());
-        LOGGER.info(String.format(Locale.ROOT, "Load plugin: [%s] successful.", plugin.getName()));
-        ByteEnhanceManager.enhanceStaticPlugin(plugin);
+        LOGGER.log(Level.INFO, "Load plugin:{0} successful.", plugin.getName());
     }
 
     /**
-     * 设置默认的插件版本
+     * 安装插件
      *
-     * @param pluginName 插件名称
+     * @param names 插件名集合
      */
-    private static void setDefaultVersion(String pluginName) {
-        PluginSchemaValidator.setDefaultVersion(pluginName);
+    public static void install(Set<String> names) {
+        initPlugins(names, true);
+        for (String name : names) {
+            if (!PLUGIN_MAP.containsKey(name)) {
+                LOGGER.log(Level.SEVERE, "Plugin: {0} installation failure. It can not be found in loaded-plugins.",
+                    name);
+            }
+        }
+    }
+
+    /**
+     * 卸载插件
+     *
+     * @param names 插件名集合
+     */
+    public static void unInstall(Set<String> names) {
+        for (String name : names) {
+            Plugin plugin = PLUGIN_MAP.get(name);
+            if (plugin == null) {
+                LOGGER.log(Level.INFO, "Plugin {0} is not here.", name);
+                continue;
+            }
+            if (!plugin.isDynamicSupport()) {
+                LOGGER.log(Level.INFO, "Plugin {0} is static-support-plugin,can not be uninstalled.", name);
+                continue;
+            }
+
+            // 释放所有的插件占用的锁
+            for (String string : plugin.getAllAdviceClassLockSet()) {
+                BufferedAgentBuilder.getAdviceFlagMap().put(string, false);
+            }
+
+            // 取消字节码增强
+            ByteEnhanceManager.unEnhanceDynamicPlugin(plugin);
+
+            // 关闭插件服务
+            for (String serviceName : plugin.getServiceList()) {
+                PluginServiceManager.stopService(serviceName);
+            }
+
+            // 移除PluginClassLoaderFinder中plugin对应的PluginClassLoader
+            ClassLoaderManager.getPluginClassFinder().removePluginClassLoader(plugin);
+
+            // 清理该插件创建的Interceptor
+            ConcurrentHashMap<String, List<Interceptor>> interceptorHashMap = CommonBaseAdviser.getInterceptorListMap();
+            for (List<Interceptor> interceptors : interceptorHashMap.values()) {
+                interceptors.removeIf(
+                    interceptor -> plugin.getPluginClassLoader().equals(interceptor.getClass().getClassLoader()));
+            }
+            interceptorHashMap.keySet().removeIf(key -> interceptorHashMap.get(key).size() == 0);
+
+            // 删除缓存的插件配置
+            for (String configName : plugin.getConfigList()) {
+                PluginConfigManager.removeConfig(configName);
+            }
+
+            // 关闭插件类加载器
+            try {
+                plugin.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            PLUGIN_MAP.remove(name);
+        }
+    }
+
+    public static void unInstallAll() {
+        Set<String> names = PLUGIN_MAP.keySet();
+        unInstall(names);
     }
 
     /**
@@ -144,19 +227,6 @@ public class PluginManager {
                 }
             });
         }
-    }
-
-    private static void loadConfig(Plugin plugin) {
-        PluginConfigManager.loadPluginConfig(plugin);
-    }
-
-    private static void initService(Plugin plugin) {
-        PluginServiceManager.initPluginService(plugin);
-    }
-
-    private static void loadService(Plugin plugin) {
-        final URL[] urls = toUrls(plugin.getName(), listJars(getServiceDir(plugin.getPath())));
-        plugin.createServiceClassLoader(urls);
     }
 
     /**

@@ -112,6 +112,7 @@ public abstract class InterceptDeclarer {
      * @throws IllegalAccessException    无法访问addURL方法或defineClass方法
      * @throws InstantiationException    实例化失败
      */
+    @Deprecated
     private static Interceptor[] createInterceptors(String[] interceptors, ClassLoader classLoader)
         throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
         IllegalAccessException, InstantiationException {

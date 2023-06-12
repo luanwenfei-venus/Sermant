@@ -23,7 +23,6 @@ import net.bytebuddy.asm.Advice;
 import net.bytebuddy.implementation.bytecode.assign.Assigner;
 
 import java.lang.reflect.Constructor;
-import java.util.ListIterator;
 
 /**
  * 启动类构造函数advice模板
@@ -44,7 +43,7 @@ public class DefaultConstTemplate {
      * @param constructor 构造函数
      * @param methodKey 方法键，用于查找模板类
      * @param arguments 方法入参
-     * @param interceptorItr 拦截器迭代器
+     * @param adviceClsName advice类名
      * @param context 执行上下文
      * @throws Exception 执行异常
      */
@@ -54,14 +53,13 @@ public class DefaultConstTemplate {
             @Advice.Origin Constructor<?> constructor,
             @Advice.Origin("#t\\##m#s") String methodKey,
             @Advice.AllArguments(readOnly = false, typing = Assigner.Typing.DYNAMIC) Object[] arguments,
-            @Advice.Local(value = "_INTERCEPTOR_ITR_$SERMANT_LOCAL") ListIterator<?> interceptorItr,
+            @Advice.Local(value = "_ADVICE_CLASS_NAME_$SERMANT_LOCAL") String adviceClsName,
             @Advice.Local(value = "_EXECUTE_CONTEXT_$SERMANT_LOCAL") Object context
     ) throws Throwable {
-        final String adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template.DefaultConstTemplate_"
-                + Integer.toHexString(methodKey.hashCode());
-        interceptorItr = Adviser.getInterceptorListMap().get(adviceClsName).listIterator();
+        adviceClsName = "com.huaweicloud.sermant.core.plugin.agent.template"
+            + ".DefaultConstTemplate_" + Integer.toHexString(methodKey.hashCode());
         context = ExecuteContext.forConstructor(cls, constructor, arguments, null);
-        context = Adviser.onMethodEnter(context, interceptorItr);
+        context = Adviser.onMethodEnter(context, adviceClsName);
         arguments = ((ExecuteContext) context).getArguments();
     }
 
@@ -69,17 +67,17 @@ public class DefaultConstTemplate {
      * 调用方法的后置触发点
      *
      * @param obj 被增强的对象
-     * @param interceptorItr 拦截器迭代器
+     * @param adviceClsName advice类名
      * @param context 执行上下文
      * @throws Exception 执行异常
      */
     @Advice.OnMethodExit
     public static void onMethodExit(
             @Advice.This(typing = Assigner.Typing.DYNAMIC) Object obj,
-            @Advice.Local(value = "_INTERCEPTOR_ITR_$SERMANT_LOCAL") ListIterator<?> interceptorItr,
+            @Advice.Local(value = "_ADVICE_CLASS_NAME_$SERMANT_LOCAL") String adviceClsName,
             @Advice.Local(value = "_EXECUTE_CONTEXT_$SERMANT_LOCAL") Object context
     ) throws Throwable {
         context = ((ExecuteContext) context).afterConstructor(obj, null);
-        Adviser.onMethodExit(context, interceptorItr);
+        Adviser.onMethodExit(context, adviceClsName);
     }
 }

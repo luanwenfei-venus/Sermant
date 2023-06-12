@@ -50,6 +50,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -109,6 +110,8 @@ public class NettyClient {
 
     private int reconnectInternalTime;
 
+    private boolean isStop;
+
     /**
      * 构造函数
      *
@@ -132,7 +135,12 @@ public class NettyClient {
      * 优雅关闭Netty
      */
     public void stop() {
-        eventLoopGroup.shutdownGracefully();
+        try {
+            eventLoopGroup.shutdownGracefully().await();
+        } catch (InterruptedException e) {
+            LOGGER.log(Level.WARNING,"When shutdown netty,occur exception.",e);
+        }
+        isStop = true;
     }
 
     private void bind() {
@@ -252,5 +260,9 @@ public class NettyClient {
             LOGGER.info("Sent instant data successfully by netty.");
             return true;
         }
+    }
+
+    public boolean isStop() {
+        return isStop;
     }
 }

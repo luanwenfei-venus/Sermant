@@ -113,7 +113,8 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Premain-Class>com.huaweicloud.sermant.premain.AgentPremain</Premain-Class>
+                            <Premain-Class>com.huaweicloud.sermant.premain.AgentLauncher</Premain-Class>
+                            <Agent-Class>com.huaweicloud.sermant.premain.AgentLauncher</Agent-Class>
                             <Can-Redefine-Classes>true</Can-Redefine-Classes>
                             <Can-Retransform-Classes>true</Can-Retransform-Classes>
                         </manifestEntries>

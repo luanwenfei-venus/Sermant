@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -92,17 +93,20 @@ public class ServiceManager {
     /**
      * 服务集合
      */
-    private static final Map<String, BaseService> SERVICES = new HashMap<String, BaseService>();
-
-    /**
-     * Agent核心服务配置
-     */
-    private static final ServiceConfig SERVICE_CONFIG = ConfigManager.getConfig(ServiceConfig.class);
+    private static final Map<String, BaseService> SERVICES = new HashMap<>();
 
     /**
      * Constructor.
      */
     protected ServiceManager() {
+    }
+    
+    public static void shutdown() {
+        Set<BaseService> set = new HashSet<>(SERVICES.values());
+        for (BaseService baseService : set) {
+            baseService.stop();
+        }
+        SERVICES.clear();
     }
 
     /**
@@ -112,14 +116,14 @@ public class ServiceManager {
         ArrayList<String> startServiceArray = new ArrayList<>();
         for (final BaseService service : ServiceLoader.load(BaseService.class,
                 ClassLoaderManager.getFrameworkClassLoader())) {
-            if (SERVICE_CONFIG.checkServiceEnable(service.getClass().getName()) && loadService(service,
+            if (ConfigManager.getConfig(ServiceConfig.class).checkServiceEnable(service.getClass().getName()) && loadService(service,
                     service.getClass(), BaseService.class)) {
                 service.start();
                 startServiceArray.add(service.getClass().getName());
             }
         }
         FrameworkEventCollector.getInstance().collectServiceStartEvent(startServiceArray.toString());
-        addStopHook(); // 加载完所有服务再启动服务
+//        addStopHook(); // 加载完所有服务再启动服务
     }
 
     /**

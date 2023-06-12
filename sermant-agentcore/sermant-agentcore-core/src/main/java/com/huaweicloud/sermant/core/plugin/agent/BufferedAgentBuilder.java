@@ -21,6 +21,7 @@ import com.huaweicloud.sermant.core.common.CommonConstant;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.config.ConfigManager;
 import com.huaweicloud.sermant.core.event.collector.FrameworkEventCollector;
+import com.huaweicloud.sermant.core.plugin.Plugin;
 import com.huaweicloud.sermant.core.plugin.agent.config.AgentConfig;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.AbstractPluginDescription;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDescription;
@@ -53,6 +54,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
@@ -86,7 +88,16 @@ public class BufferedAgentBuilder {
      */
     private final List<BuilderAction> actions = new ArrayList<>();
 
-    private BufferedAgentBuilder() {}
+    /**
+     * 1、这里需要在判断是否增强时进行检查，如果为false，则自身做增强并将其改为true，true，则增加一个Interceptor
+     * 2、这里需要在卸载时进行判断，谁持有这个Advice的权利，则卸载时需要将其改为false
+     */
+    private static final HashMap<String, Boolean> adviceFlagMap = new HashMap<>();
+    
+    private Plugin plugin;
+
+    private BufferedAgentBuilder() {
+    }
 
     /**
      * 创建{@link BufferedAgentBuilder}并依据配置设置基础操作：
@@ -107,7 +118,7 @@ public class BufferedAgentBuilder {
     }
 
     /**
-     * 设置字节码增强的重定义策略，由{@link AgentConfig#isEnhanceBootStrapEnable()}而定
+     * 设置字节码增强的重定义策略，由{@link AgentConfig#isReTransformEnable()}而定
      * <pre>
      *     1.若不增强启动类加载器加载的类，则直接使用默认规则{@link AgentBuilder.RedefinitionStrategy#DISABLED}
      *     1.若增强启动类加载器加载的类，则使用规则{@link AgentBuilder.RedefinitionStrategy#RETRANSFORMATION}
@@ -116,7 +127,7 @@ public class BufferedAgentBuilder {
      * @return BufferedAgentBuilder本身
      */
     private BufferedAgentBuilder setBootStrapStrategy() {
-        if (!config.isEnhanceBootStrapEnable()) {
+        if (!config.isReTransformEnable()) {
             return this;
         }
         return addAction(new BuilderAction() {
@@ -265,6 +276,7 @@ public class BufferedAgentBuilder {
      * @return BufferedAgentBuilder本身
      */
     public BufferedAgentBuilder addClassLoaderEnhance() {
+        BufferedAgentBuilder bufferedAgentBuilder = this;
         return addAction(new BuilderAction() {
             @Override
             public AgentBuilder process(AgentBuilder builder) {
@@ -274,7 +286,7 @@ public class BufferedAgentBuilder {
                     @Override
                     public Builder<?> transform(Builder<?> builder, TypeDescription typeDescription,
                         ClassLoader classLoader, JavaModule module) {
-                        return new DefaultTransformer(classLoaderDeclarer.getInterceptDeclarers(classLoader))
+                        return new DefaultTransformer(classLoaderDeclarer,bufferedAgentBuilder)
                             .transform(builder, typeDescription, classLoader, module);
                     }
 
@@ -438,5 +450,17 @@ public class BufferedAgentBuilder {
         public void close() throws IOException {
 
         }
+    }
+
+    public static HashMap<String, Boolean> getAdviceFlagMap() {
+        return adviceFlagMap;
+    }
+
+    public Plugin getPlugin() {
+        return plugin;
+    }
+
+    public void setPlugin(Plugin plugin) {
+        this.plugin = plugin;
     }
 }

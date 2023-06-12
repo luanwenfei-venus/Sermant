@@ -1,13 +1,19 @@
 package com.huaweicloud.sermant.core.plugin;
 
+import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDeclarer;
 import com.huaweicloud.sermant.core.plugin.classloader.PluginClassLoader;
 import com.huaweicloud.sermant.core.plugin.classloader.ServiceClassLoader;
 
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * 用于管理插件信息
@@ -23,6 +29,8 @@ public class Plugin {
 
     private String path;
 
+    private boolean dynamicSupport;
+
     private List<String> serviceList = new ArrayList<>();
 
     private List<String> configList = new ArrayList<>();
@@ -32,10 +40,15 @@ public class Plugin {
     private ServiceClassLoader serviceClassLoader;
 
     private ResettableClassFileTransformer resettableClassFileTransformer;
+    
+    private HashMap<String, Set<String>> interceptorInfoMap= new HashMap<>();
 
-    public Plugin(String name, String path, PluginClassLoader pluginClassLoader) {
+    private HashMap<PluginDeclarer,Set<String>> adviceClassLockSet = new HashMap<>();
+
+    public Plugin(String name, String path, boolean dynamicSupport, PluginClassLoader pluginClassLoader) {
         this.name = name;
         this.path = path;
+        this.dynamicSupport = dynamicSupport;
         this.pluginClassLoader = pluginClassLoader;
     }
 
@@ -61,6 +74,14 @@ public class Plugin {
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public boolean isDynamicSupport() {
+        return dynamicSupport;
+    }
+
+    public void setDynamicSupport(boolean dynamicSupport) {
+        this.dynamicSupport = dynamicSupport;
     }
 
     public List<String> getServiceList() {
@@ -107,5 +128,44 @@ public class Plugin {
         if (urls.length > 0) {
             this.serviceClassLoader = new ServiceClassLoader(urls, this.pluginClassLoader);
         }
+    }
+    
+    public void close() throws IOException {
+        if (serviceClassLoader != null) {
+            serviceClassLoader.close();
+        }
+
+        if (pluginClassLoader != null) {
+            pluginClassLoader.close();
+        }
+    }
+    
+    public boolean checkInterceptor(String enhanceInfo, String interceptorCls) {
+        if (interceptorInfoMap.get(enhanceInfo) == null) {
+            Set<String> interceptorClsSet = new HashSet<>();
+            interceptorClsSet.add(interceptorCls);
+            interceptorInfoMap.put(enhanceInfo,interceptorClsSet);
+            return true;
+        } else {
+            if (interceptorInfoMap.get(enhanceInfo).contains(interceptorCls)) {
+                return false;
+            } else {
+                interceptorInfoMap.get(enhanceInfo).add(interceptorCls);
+                return true;
+            }
+        }
+    }
+
+    public Set<String> getAdviceClassLockSet(PluginDeclarer pluginDeclarer) {
+        adviceClassLockSet.computeIfAbsent(pluginDeclarer, k -> new HashSet<>());
+        return adviceClassLockSet.get(pluginDeclarer);
+    }
+
+    public Set<String> getAllAdviceClassLockSet() {
+        Set<String> all = new HashSet<>();
+        for(Set<String> set : adviceClassLockSet.values()){
+            all.addAll(set);
+        }
+        return all;
     }
 }

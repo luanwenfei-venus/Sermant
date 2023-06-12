@@ -34,6 +34,11 @@ public class PluginSetting {
     private Set<String> plugins;
 
     /**
+     * 支持动态安装的插件 分为active和passive两类
+     */
+    private Map<String, Set<String>> dynamicPlugins;
+
+    /**
      * 场景与插件映射关系
      */
     private Map<String, Set<String>> profiles;
@@ -49,6 +54,14 @@ public class PluginSetting {
 
     public void setPlugins(Set<String> plugins) {
         this.plugins = plugins;
+    }
+
+    public Map<String, Set<String>> getDynamicPlugins() {
+        return dynamicPlugins;
+    }
+
+    public void setDynamicPlugins(Map<String, Set<String>> dynamicPlugins) {
+        this.dynamicPlugins = dynamicPlugins;
     }
 
     public void setProfiles(Map<String, Set<String>> profiles) {

@@ -66,8 +66,7 @@ public class HeartbeatServiceImpl implements HeartbeatService {
     /**
      * 心跳定时任务
      */
-    private static final ScheduledExecutorService EXECUTOR_SERVICE =
-            Executors.newScheduledThreadPool(1, new ThreadFactoryUtils("heartbeat-task"));
+    private static ScheduledExecutorService EXECUTOR_SERVICE;
 
     /**
      * NettyClient
@@ -75,11 +74,13 @@ public class HeartbeatServiceImpl implements HeartbeatService {
     private NettyClient nettyClient;
 
     // 初始化心跳数据常量
-    private final HeartbeatMessage heartbeatMessage = new HeartbeatMessage();
+    private HeartbeatMessage heartbeatMessage;
 
     @Override
     public void start() {
+        heartbeatMessage = new HeartbeatMessage();
         nettyClient = NettyClientFactory.getInstance().getDefaultNettyClient();
+        EXECUTOR_SERVICE = Executors.newScheduledThreadPool(1, new ThreadFactoryUtils("heartbeat-task"));
         EXECUTOR_SERVICE.scheduleAtFixedRate(this::execute, 0,
                 Math.max(ConfigManager.getConfig(HeartbeatConfig.class).getInterval(),
                         HeartbeatConstant.HEARTBEAT_MINIMAL_INTERVAL),
@@ -88,7 +89,12 @@ public class HeartbeatServiceImpl implements HeartbeatService {
 
     @Override
     public void stop() {
-        EXECUTOR_SERVICE.shutdownNow();
+        if(EXECUTOR_SERVICE != null){
+            EXECUTOR_SERVICE.shutdown();
+        }
+        if (nettyClient != null && !nettyClient.isStop()) {
+            nettyClient.stop();
+        }
     }
 
     /**

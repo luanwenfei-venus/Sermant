@@ -36,8 +36,7 @@ import java.util.Map;
  * @since 2022-06-20
  */
 public class ClassLoaderManager {
-    private static final SermantClassLoader SERMANT_CLASS_LOADER =
-        (SermantClassLoader)ClassLoaderManager.class.getClassLoader();
+    private static SermantClassLoader sermantClassLoader;
 
     private static PluginClassFinder pluginClassFinder;
 
@@ -53,12 +52,25 @@ public class ClassLoaderManager {
      * @throws MalformedURLException MalformedURLException
      */
     public static void init(Map<String, Object> argsMap) throws MalformedURLException {
-        initFrameworkClassLoader(argsMap.get(CommonConstant.CORE_IMPLEMENT_DIR_KEY).toString());
+        sermantClassLoader = (SermantClassLoader)ClassLoaderManager.class.getClassLoader();
+        frameworkClassLoader = initFrameworkClassLoader(argsMap.get(CommonConstant.CORE_IMPLEMENT_DIR_KEY).toString());
         pluginClassFinder = new PluginClassFinder();
     }
 
+    private static FrameworkClassLoader initFrameworkClassLoader(String path) throws MalformedURLException {
+        if(frameworkClassLoader != null){
+            return frameworkClassLoader;
+        }
+        URL[] coreImplementUrls = listCoreImplementUrls(path);
+        return new FrameworkClassLoader(coreImplementUrls, sermantClassLoader);
+    }
+
     public static PluginClassLoader createPluginClassLoader(){
-        return new PluginClassLoader(new URL[0], SERMANT_CLASS_LOADER);
+        return new PluginClassLoader(new URL[0], sermantClassLoader);
+    }
+
+    public static SermantClassLoader getSermantClassLoader() {
+        return sermantClassLoader;
     }
 
     /**
@@ -72,15 +84,6 @@ public class ClassLoaderManager {
 
     public static PluginClassFinder getPluginClassFinder() {
         return pluginClassFinder;
-    }
-
-    public static SermantClassLoader getSermantClassLoader() {
-        return SERMANT_CLASS_LOADER;
-    }
-
-    private static void initFrameworkClassLoader(String path) throws MalformedURLException {
-        URL[] coreImplementUrls = listCoreImplementUrls(path);
-        frameworkClassLoader = new FrameworkClassLoader(coreImplementUrls, SERMANT_CLASS_LOADER);
     }
 
     private static URL[] listCoreImplementUrls(String coreImplementPath) throws MalformedURLException {
@@ -105,7 +108,7 @@ public class ClassLoaderManager {
             throw new RuntimeException("common lib is not exist or is not directory.");
         }
         File[] jars = commonLibDir.listFiles((file, name) -> name.endsWith(".jar"));
-        if (jars == null || jars.length <= 0) {
+        if (jars == null || jars.length == 0) {
             throw new RuntimeException("common lib directory is empty");
         }
         List<URL> urlList = new ArrayList<>();

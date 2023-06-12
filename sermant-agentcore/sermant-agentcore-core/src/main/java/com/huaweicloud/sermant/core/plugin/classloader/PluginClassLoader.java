@@ -20,7 +20,6 @@ import com.huaweicloud.sermant.core.common.CommonConstant;
 
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
 
 /**
  * 加载插件主模块的类加载器
@@ -29,8 +28,6 @@ import java.util.ArrayList;
  * @since 2023-04-27
  */
 public class PluginClassLoader extends URLClassLoader {
-    private final ArrayList<ClassLoader> classLoaders = new ArrayList<>();
-
     /**
      * Constructor.
      *
@@ -43,10 +40,6 @@ public class PluginClassLoader extends URLClassLoader {
 
     public void appendUrl(URL url) {
         this.addURL(url);
-    }
-
-    public void appendClassLoader(ClassLoader classLoader) {
-        classLoaders.add(classLoader);
     }
 
     @Override
@@ -90,7 +83,7 @@ public class PluginClassLoader extends URLClassLoader {
     }
 
     public Class<?> loadClassOnlySermant(String name, boolean resolve) throws ClassNotFoundException {
-        Class<?> clazz = null;
+        Class<?> clazz;
 
         // 这里需要调用父类的同参数方法 否则: StackOverFlow
         clazz = super.loadClass(name, resolve);

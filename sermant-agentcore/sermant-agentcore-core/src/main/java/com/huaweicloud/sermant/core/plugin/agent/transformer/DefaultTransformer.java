@@ -16,14 +16,13 @@
 
 package com.huaweicloud.sermant.core.plugin.agent.transformer;
 
-import com.huaweicloud.sermant.core.classloader.ClassLoaderManager;
 import com.huaweicloud.sermant.core.common.LoggerFactory;
-import com.huaweicloud.sermant.core.plugin.agent.adviser.Adviser;
+import com.huaweicloud.sermant.core.plugin.Plugin;
+import com.huaweicloud.sermant.core.plugin.agent.BufferedAgentBuilder;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.InterceptDeclarer;
+import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDeclarer;
 import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
-import com.huaweicloud.sermant.core.plugin.agent.template.BootstrapConstTemplate;
-import com.huaweicloud.sermant.core.plugin.agent.template.BootstrapMemberTemplate;
-import com.huaweicloud.sermant.core.plugin.agent.template.BootstrapStaticTemplate;
+import com.huaweicloud.sermant.core.plugin.agent.template.CommonBaseAdviser;
 import com.huaweicloud.sermant.core.plugin.agent.template.DefaultConstTemplate;
 import com.huaweicloud.sermant.core.plugin.agent.template.DefaultMemberTemplate;
 import com.huaweicloud.sermant.core.plugin.agent.template.DefaultStaticTemplate;
@@ -59,6 +58,16 @@ public class DefaultTransformer implements AgentBuilder.Transformer {
     private static final Logger LOGGER = LoggerFactory.getLogger();
 
     /**
+     * 创建该DefaultTransformer 的BufferAgentBuilder
+     */
+    private BufferedAgentBuilder agentBuilder;
+
+    /**
+     * 创建该DefaultTransformer 的PluginDeclarer
+     */
+    private PluginDeclarer pluginDeclarer;
+
+    /**
      * 拦截定义数组
      */
     private final InterceptDeclarer[] interceptDeclarers;
@@ -70,6 +79,12 @@ public class DefaultTransformer implements AgentBuilder.Transformer {
      */
     public DefaultTransformer(InterceptDeclarer[] interceptDeclarers) {
         this.interceptDeclarers = interceptDeclarers;
+    }
+
+    public DefaultTransformer(PluginDeclarer pluginDeclarer, BufferedAgentBuilder builder) {
+        this.agentBuilder = builder;
+        this.pluginDeclarer =pluginDeclarer;
+        this.interceptDeclarers = pluginDeclarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader());
     }
 
     @Override
@@ -175,18 +190,43 @@ public class DefaultTransformer implements AgentBuilder.Transformer {
      * @throws NoSuchMethodException 无法找到方法，正常不会报出
      * @throws NoSuchFieldException 找不到属性
      */
-    private DynamicType.Builder<?> resolve(DynamicType.Builder<?> builder,
-            MethodDescription.InDefinedShape methodDesc, List<Interceptor> interceptors, Class<?> templateCls)
-            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException, NoSuchFieldException {
+    private DynamicType.Builder<?> resolve(DynamicType.Builder<?> builder, MethodDescription.InDefinedShape methodDesc,
+        List<Interceptor> interceptors, Class<?> templateCls)
+        throws InvocationTargetException, IllegalAccessException, NoSuchMethodException, NoSuchFieldException {
         final String adviceClassName = getAdviceClassName(templateCls, methodDesc);
-        List<Interceptor> globalInterceptors = Adviser.getInterceptorListMap().get(adviceClassName);
-        if (globalInterceptors == null) {
-            globalInterceptors = new ArrayList<>(interceptors);
-            Adviser.getInterceptorListMap().put(adviceClassName, globalInterceptors);
-            return builder.visit(Advice.to(templateCls).on(ElementMatchers.is(methodDesc)));
+        List<Interceptor> globalInterceptors = CommonBaseAdviser.getInterceptorListMap().get(adviceClassName);
+        Boolean adviceFlag = BufferedAgentBuilder.getAdviceFlagMap().get(adviceClassName);
+        Plugin plugin = agentBuilder.getPlugin();
+        if (Boolean.TRUE.equals(adviceFlag)) {
+            if (globalInterceptors == null) {
+                CommonBaseAdviser.getInterceptorListMap().put(adviceClassName, new ArrayList<>());
+                globalInterceptors = CommonBaseAdviser.getInterceptorListMap().get(adviceClassName);
+            }
+            for (Interceptor interceptor : interceptors) {
+                if (plugin.checkInterceptor(adviceClassName, interceptor.getClass().getCanonicalName())) {
+                    globalInterceptors.add(interceptor);
+                }
+            }
+            // 检查锁是否归自己持有
+            if(agentBuilder.getPlugin().getAdviceClassLockSet(pluginDeclarer).contains(adviceClassName)){
+                return builder.visit(Advice.to(templateCls).on(ElementMatchers.is(methodDesc)));
+            }else {
+                return builder;
+            }
         } else {
-            globalInterceptors.addAll(interceptors);
-            return builder;
+            // 获得锁
+            agentBuilder.getPlugin().getAdviceClassLockSet(pluginDeclarer).add(adviceClassName);
+            if (globalInterceptors == null) {
+                CommonBaseAdviser.getInterceptorListMap().put(adviceClassName, new ArrayList<>());
+                globalInterceptors = CommonBaseAdviser.getInterceptorListMap().get(adviceClassName);
+            }
+            for (Interceptor interceptor : interceptors) {
+                if (plugin.checkInterceptor(adviceClassName, interceptor.getClass().getCanonicalName())) {
+                    globalInterceptors.add(interceptor);
+                }
+            }
+            BufferedAgentBuilder.getAdviceFlagMap().put(adviceClassName, true);
+            return builder.visit(Advice.to(templateCls).on(ElementMatchers.is(methodDesc)));
         }
     }
 

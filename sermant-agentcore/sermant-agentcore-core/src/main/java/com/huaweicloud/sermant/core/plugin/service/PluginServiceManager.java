@@ -74,7 +74,7 @@ public class PluginServiceManager {
             }
         }
         FrameworkEventCollector.getInstance().collectServiceStartEvent(startServiceArray.toString());
-        addStopHook(); // 加载完所有服务再启动服务
+//        addStopHook(); // 加载完所有服务再启动服务
     }
 
     /**
@@ -158,5 +158,20 @@ public class PluginServiceManager {
         // 上报Sermant关闭的事件
         FrameworkEventCollector.getInstance().collectAgentStopEvent();
         EventManager.shutdown();
+    }
+
+    /**
+     * 关闭插件服务
+     *
+     * @param serviceName 插件服务名
+     * @return
+     */
+    public static boolean stopService(String serviceName) {
+        if (SERVICES.get(serviceName) == null) {
+            return false;
+        }
+        SERVICES.get(serviceName).stop();
+        SERVICES.remove(serviceName);
+        return true;
     }
 }

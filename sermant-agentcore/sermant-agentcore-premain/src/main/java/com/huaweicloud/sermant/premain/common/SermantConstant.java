@@ -58,6 +58,11 @@ public class SermantConstant {
     public static final String CORE_VERSION_KEY = "Sermant-Version";
 
     /**
+     * 启动配置中制品名的键
+     */
+    public static final String ARTIFACT_NAME_KEY = "artifact";
+
+    /**
      * 启动配置中应用名称的键
      */
     public static final String APP_NAME_KEY = "appName";

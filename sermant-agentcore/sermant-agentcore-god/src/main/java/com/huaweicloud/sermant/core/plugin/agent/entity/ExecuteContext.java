@@ -16,12 +16,16 @@
 
 package com.huaweicloud.sermant.core.plugin.agent.entity;
 
+import com.huaweicloud.sermant.core.plugin.agent.interceptor.Interceptor;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.ListIterator;
 import java.util.Map;
 
 /**
@@ -91,6 +95,11 @@ public class ExecuteContext {
      * 贯穿调用流程的本地局部属性集
      */
     private Map<String, Object> localFields;
+
+    /**
+     * 拦截器双向迭代器
+     */
+    private ListIterator<Interceptor> interceptorIterator;
 
     /**
      * 原生字段集，每次获取的字段都会暂时保存在此
@@ -223,6 +232,15 @@ public class ExecuteContext {
 
     public Map<String, Object> getExtMemberFields() {
         return extMemberFields;
+    }
+
+    public ListIterator<Interceptor> getInterceptorIterator() {
+        return interceptorIterator;
+    }
+
+    public void setInterceptorIterator(
+            ListIterator<Interceptor> interceptorIterator) {
+        this.interceptorIterator = interceptorIterator;
     }
 
     /**

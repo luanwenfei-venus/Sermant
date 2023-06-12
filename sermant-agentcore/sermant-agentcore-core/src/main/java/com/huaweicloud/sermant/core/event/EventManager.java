@@ -43,10 +43,7 @@ public class EventManager {
 
     private static final ConcurrentHashMap<String, EventCollector> EVENT_COLLECTORS = new ConcurrentHashMap<>();
 
-    private static final ScheduledExecutorService EXECUTOR_SERVICE =
-            Executors.newScheduledThreadPool(1, new ThreadFactoryUtils("event-collect-task"));
-
-    private static final EventConfig EVENT_CONFIG = ConfigManager.getConfig(EventConfig.class);
+    private static ScheduledExecutorService executorService;
 
     private static final long INITIAL_DELAY = 30000L;
 
@@ -57,7 +54,9 @@ public class EventManager {
      * 初始化，创建定时任务，定时上报事件
      */
     public static void init() {
-        if (!EVENT_CONFIG.isEnable()) {
+        EventConfig eventConfig = ConfigManager.getConfig(EventConfig.class);
+        executorService = Executors.newScheduledThreadPool(1, new ThreadFactoryUtils("event-collect-task"));
+        if (!eventConfig.isEnable()) {
             LOGGER.info("Event is not enable.");
             return;
         }
@@ -72,8 +71,8 @@ public class EventManager {
         EventManager.registerCollector(LogEventCollector.getInstance());
 
         // 开启定时采集上报事件消息
-        EXECUTOR_SERVICE.scheduleAtFixedRate(EventManager::collectAll, INITIAL_DELAY, EVENT_CONFIG.getSendInterval(),
-                TimeUnit.MILLISECONDS);
+        executorService.scheduleAtFixedRate(EventManager::collectAll, INITIAL_DELAY, eventConfig.getSendInterval(),
+            TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -81,6 +80,9 @@ public class EventManager {
      */
     public static void shutdown() {
         collectAll();
+        if (executorService != null) {
+            executorService.shutdown();
+        }
     }
 
     /**

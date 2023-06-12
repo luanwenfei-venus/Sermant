@@ -18,6 +18,7 @@ package com.huaweicloud.sermant.core.plugin.agent.collector;
 
 import com.huaweicloud.sermant.core.common.LoggerFactory;
 import com.huaweicloud.sermant.core.plugin.Plugin;
+import com.huaweicloud.sermant.core.plugin.agent.BufferedAgentBuilder;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.AbstractPluginDescription;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDeclarer;
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDescription;
@@ -57,6 +58,10 @@ public class PluginCollectorManager {
         return new ArrayList<>(describeDeclarers(getDeclarers(plugin.getPluginClassLoader())));
     }
 
+    public static List<PluginDescription> getPluginDescription(Plugin plugin, BufferedAgentBuilder builder){
+        return new ArrayList<>(describeDeclarers(getDeclarers(plugin.getPluginClassLoader()),builder));
+    }
+
     /**
      * 从插件收集器中获取所有插件声明器
      *
@@ -88,6 +93,15 @@ public class PluginCollectorManager {
         return plugins;
     }
 
+    private static List<PluginDescription> describeDeclarers(Iterable<? extends PluginDeclarer> declarers,
+            BufferedAgentBuilder builder) {
+        final List<PluginDescription> plugins = new ArrayList<>();
+        for (PluginDeclarer pluginDeclarer : declarers) {
+            plugins.add(describeDeclarer(pluginDeclarer,builder));
+        }
+        return plugins;
+    }
+
     /**
      * 将一个插件声明器描述为插件描述器
      *
@@ -107,6 +121,23 @@ public class PluginCollectorManager {
                 // todo ClassLoader.getSystemClassLoader() 已经没有作用
                 return new DefaultTransformer(declarer.getInterceptDeclarers(ClassLoader.getSystemClassLoader()))
                     .transform(builder, typeDescription, classLoader, module);
+            }
+        };
+    }
+
+    private static PluginDescription describeDeclarer(PluginDeclarer declarer,BufferedAgentBuilder agentBuilder) {
+        return new AbstractPluginDescription() {
+            @Override
+            public boolean matches(TypeDescription target) {
+                return matchTarget(declarer.getClassMatcher(), target);
+            }
+
+            @Override
+            public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder, TypeDescription typeDescription,
+                ClassLoader classLoader, JavaModule module) {
+                // todo ClassLoader.getSystemClassLoader() 已经没有作用
+                return new DefaultTransformer(declarer   ,
+                    agentBuilder).transform(builder, typeDescription, classLoader, module);
             }
         };
     }

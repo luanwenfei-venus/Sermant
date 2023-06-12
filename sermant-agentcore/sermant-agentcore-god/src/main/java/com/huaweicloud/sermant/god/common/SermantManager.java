@@ -1,8 +1,9 @@
 package com.huaweicloud.sermant.god.common;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
-import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 管理现在已经存在的Sermant
@@ -11,45 +12,60 @@ import java.util.Map.Entry;
  * @since 2023-05-24
  */
 public class SermantManager {
-    private static final HashMap<String, SermantClassLoader> SERMANT_MANAGE_MAP = new HashMap<>();
+    private static final ConcurrentHashMap<String, SermantClassLoader> SERMANT_MANAGE_MAP = new ConcurrentHashMap<>();
+    
+    private static final ConcurrentHashMap<String,Boolean> SERMANT_STATUS = new ConcurrentHashMap<>();
 
     /**
-     * 当前命名空间下是否有Sermant
+     * 当前产品是否挂载过Sermant底座
      *
-     * @param namespace 标识Sermant
+     * @param artifact 标识Sermant
      * @return boolean
      */
-    public static boolean hasSermant(String namespace) {
-        return SERMANT_MANAGE_MAP.containsKey(namespace);
+    public static boolean hasSermant(String artifact) {
+        return SERMANT_MANAGE_MAP.containsKey(artifact);
     }
 
     /**
      * 创建一个Sermant
      *
-     * @param namespace 标识Sermant
+     * @param artifact 标识Sermant
      * @param urls Sermant资源路径
      * @return SermantClassLoader
      */
-    public static SermantClassLoader createSermant(String namespace,URL[] urls) {
-        if (hasSermant(namespace)) {
-            return SERMANT_MANAGE_MAP.get(namespace);
+    public static SermantClassLoader createSermant(String artifact, URL[] urls) {
+        if (hasSermant(artifact)) {
+            return SERMANT_MANAGE_MAP.get(artifact);
         }
-        return new SermantClassLoader(urls);
+        SermantClassLoader sermantClassLoader = new SermantClassLoader(urls);
+        SERMANT_MANAGE_MAP.put(artifact, sermantClassLoader);
+        return sermantClassLoader;
     }
 
     /**
      * 移除一个Sermant
      *
-     * @param sermantClassLoader 需要移除的Sermant的类加载器
+     * @param artifact 需要移除的Sermant的命名空间
      */
-    public static void removeSermant(SermantClassLoader sermantClassLoader) {
-        if (SERMANT_MANAGE_MAP.containsValue(sermantClassLoader)) {
-            for (Entry<String, SermantClassLoader> entry : SERMANT_MANAGE_MAP.entrySet()) {
-                if (entry.getValue().equals(sermantClassLoader)) {
-                    SERMANT_MANAGE_MAP.remove(entry.getKey());
-                    break;
-                }
-            }
+    public static void removeSermant(String artifact) {
+        SermantClassLoader sermantClassLoader = SERMANT_MANAGE_MAP.get(artifact);
+        try {
+            sermantClassLoader.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
+        SERMANT_MANAGE_MAP.remove(artifact);
+    }
+
+    public static boolean checkSermantStatus(String artifact){
+        Boolean status = SERMANT_STATUS.get(artifact);
+        if(status == null){
+            return false;
+        }
+        return status;
+    }
+    
+    public static void updateSermantStatus(String artifact, boolean status) {
+        SERMANT_STATUS.put(artifact,status);
     }
 }

@@ -27,6 +27,7 @@ import com.huaweicloud.sermant.core.plugin.agent.declarer.AbstractPluginDescript
 import com.huaweicloud.sermant.core.plugin.agent.declarer.PluginDescription;
 import com.huaweicloud.sermant.core.plugin.agent.enhance.ClassLoaderDeclarer;
 import com.huaweicloud.sermant.core.plugin.agent.transformer.DefaultTransformer;
+import com.huaweicloud.sermant.core.plugin.classloader.PluginClassLoader;
 import com.huaweicloud.sermant.core.plugin.classloader.ServiceClassLoader;
 import com.huaweicloud.sermant.core.utils.FileUtils;
 
@@ -372,6 +373,9 @@ public class BufferedAgentBuilder {
         private boolean checkClassLoader(TypeDescription typeDesc, ClassLoader classLoader) {
             // todo 此处可能还需要加一个，判断是否为PluginClassLoader
             if (classLoader instanceof FrameworkClassLoader) {
+                return true;
+            }
+            if(classLoader instanceof PluginClassLoader){
                 return true;
             }
             if (classLoader instanceof ServiceClassLoader) {

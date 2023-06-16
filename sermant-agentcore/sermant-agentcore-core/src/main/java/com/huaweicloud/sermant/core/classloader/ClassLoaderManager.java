@@ -53,6 +53,11 @@ public class ClassLoaderManager {
      */
     public static void init(Map<String, Object> argsMap) throws MalformedURLException {
         sermantClassLoader = (SermantClassLoader)ClassLoaderManager.class.getClassLoader();
+
+        // 将Common包中的内容也加载进SermantClassLoader
+        // 这里引入的第三方依赖需要控制当前依赖并非需要在增强中使用的宿主服务依赖，否则，将会出现类型转换错误
+        sermantClassLoader
+            .appendUrls(listCommonLibUrls(argsMap.get(CommonConstant.COMMON_DEPENDENCY_DIR_KEY).toString()));
         frameworkClassLoader = initFrameworkClassLoader(argsMap.get(CommonConstant.CORE_IMPLEMENT_DIR_KEY).toString());
         pluginClassFinder = new PluginClassFinder();
     }

@@ -95,8 +95,19 @@ public class SermantClassLoader extends URLClassLoader {
      *
      * @param url url
      */
-    public void appendToSermantClassLoader(URL url){
+    public void appendUrl(URL url) {
         this.addURL(url);
+    }
+
+    /**
+     * 向SermantClassLoader添加多个URL
+     *
+     * @param urls urls
+     */
+    public void appendUrls(URL[] urls) {
+        for (URL url : urls) {
+            this.addURL(url);
+        }
     }
 
     public void shutdown(){

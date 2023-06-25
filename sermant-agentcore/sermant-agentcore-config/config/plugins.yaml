@@ -16,9 +16,7 @@ plugins:
 # passive类型插件需再启动后再次通过指令或接口调用启用
 dynamicPlugins:
   active:
-    - active-plugin
   passive:
-    - passive-plugin
 
 # 基于场景加载插件，每个场景会有对应的插件组
 profiles:

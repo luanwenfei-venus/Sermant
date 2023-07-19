@@ -111,6 +111,30 @@
         <finalName>${project.artifactId}-${package.plugin.version}</finalName>
         <pluginManagement>
             <plugins>
+                <!--     编译切面注解       -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>aspectj-maven-plugin</artifactId>
+                    <version>1.14.0</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>compile</goal>
+                                <goal>test-compile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <aspectLibraries>
+                            <aspectLibrary>
+                                <groupId>com.huaweicloud.sermant</groupId>
+                                <artifactId>sermant-agentcore-core</artifactId>
+                            </aspectLibrary>
+                            <!-- 可以添加多个aspectLibrary来指定多个JAR包 -->
+                        </aspectLibraries>
+                        <complianceLevel>1.8</complianceLevel> <!-- 设置兼容的Java版本 -->
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>

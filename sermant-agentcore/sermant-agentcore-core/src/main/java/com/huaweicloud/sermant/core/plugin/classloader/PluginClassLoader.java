@@ -20,6 +20,7 @@ import com.huaweicloud.sermant.core.common.CommonConstant;
 
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.HashMap;
 
 /**
  * 加载插件主模块的类加载器
@@ -28,6 +29,7 @@ import java.net.URLClassLoader;
  * @since 2023-04-27
  */
 public class PluginClassLoader extends URLClassLoader {
+    private final HashMap<Long,ClassLoader> tmpLoader = new HashMap<>();
     /**
      * Constructor.
      *
@@ -62,9 +64,10 @@ public class PluginClassLoader extends URLClassLoader {
 
             if (clazz == null && !ifExclude(name)) {
                 // 自身和线程上下文类加载器不同时从自身找,否则会堆栈溢出
-                if (!this.equals(Thread.currentThread().getContextClassLoader())) {
+                ClassLoader loader = tmpLoader.get(Thread.currentThread().getId());
+                if (loader != null && !this.equals(loader)) {
                     try {
-                        clazz = Thread.currentThread().getContextClassLoader().loadClass(name);
+                        clazz = loader.loadClass(name);
                     } catch (ClassNotFoundException e) {
                         // 通过线程上下文类加载器找不到
                     }
@@ -92,6 +95,14 @@ public class PluginClassLoader extends URLClassLoader {
             resolveClass(clazz);
         }
         return clazz;
+    }
+
+    public void setTmpLoader(ClassLoader loader) {
+        tmpLoader.put(Thread.currentThread().getId(), loader);
+    }
+
+    public ClassLoader removeTmpLoader() {
+        return tmpLoader.remove(Thread.currentThread().getId());
     }
 
     private boolean ifExclude(String name) {

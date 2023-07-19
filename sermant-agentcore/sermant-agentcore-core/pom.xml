@@ -103,7 +103,16 @@
             <artifactId>byte-buddy</artifactId>
             <version>${byte.buddy.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>1.9.19</version>
+        </dependency>
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjrt</artifactId>
+            <version>1.9.19</version>
+        </dependency>
         <!--    测试阶段使用的依赖，不会产生类冲突    -->
         <dependency>
             <groupId>junit</groupId>
@@ -219,6 +228,24 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <!--     编译切面注解       -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>aspectj-maven-plugin</artifactId>
+                <version>1.14.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- 设置兼容的Java版本 -->
+                    <complianceLevel>1.8</complianceLevel>
+                </configuration>
             </plugin>
         </plugins>
     </build>

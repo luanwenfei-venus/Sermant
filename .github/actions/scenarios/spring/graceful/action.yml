@@ -3,6 +3,9 @@ description: "Auto test for graceful"
 runs:
   using: "composite"
   steps:
+    - name: set tmp host name
+      shell: bash
+      run: cat /etc/hostname
     - name: entry
       uses: ./.github/actions/common/entry
       with:

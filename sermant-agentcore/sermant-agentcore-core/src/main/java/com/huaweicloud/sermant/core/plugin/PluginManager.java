@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -87,6 +88,7 @@ public class PluginManager {
             LOGGER.log(Level.WARNING, "No plugin is configured to be uninstall.");
             return;
         }
+        pluginNames = new HashSet<>(pluginNames);
         for (String name : pluginNames) {
             Plugin plugin = PLUGIN_MAP.get(name);
             if (plugin == null) {

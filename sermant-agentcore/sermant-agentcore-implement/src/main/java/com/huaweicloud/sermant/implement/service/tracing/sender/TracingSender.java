@@ -48,13 +48,11 @@ public class TracingSender {
 
     private static final long STOP_TIME_OUT = 3000L;
 
-    private static final ArrayBlockingQueue<SpanEvent> SPAN_EVENT_DATA_QUEUE =
-            new ArrayBlockingQueue<>(MAX_SPAN_EVENT_COUNT);
-
-    private static final ExecutorService EXECUTOR =
-            Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "tracing-sender-thread"));
-
     private static TracingSender tracingSender = null;
+
+    private final ArrayBlockingQueue<SpanEvent> spanEvents;
+
+    private final ExecutorService executorService;
 
     private GatewayClient gatewayClient;
 
@@ -64,6 +62,8 @@ public class TracingSender {
     private boolean isSending;
 
     private TracingSender() {
+        executorService = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "tracing-sender-thread"));
+        spanEvents = new ArrayBlockingQueue<>(MAX_SPAN_EVENT_COUNT);
     }
 
     /**
@@ -88,7 +88,7 @@ public class TracingSender {
         }
         this.isSending = true;
         gatewayClient = ServiceManager.getService(GatewayClient.class);
-        EXECUTOR.execute(new SpanEventSendThread());
+        executorService.execute(new SpanEventSendThread());
     }
 
     /**
@@ -109,7 +109,7 @@ public class TracingSender {
      */
     public void stopSoft(long timeOut) {
         long timeDuring = 0L;
-        while (!SPAN_EVENT_DATA_QUEUE.isEmpty() && timeDuring < timeOut) {
+        while (!spanEvents.isEmpty() && timeDuring < timeOut) {
             try {
                 Thread.sleep(TRACING_SENDER_MINIMAL_INTERVAL);
                 timeDuring += TRACING_SENDER_MINIMAL_INTERVAL;
@@ -119,7 +119,10 @@ public class TracingSender {
                         e.getMessage()));
             }
         }
-        SPAN_EVENT_DATA_QUEUE.clear();
+        if (executorService != null) {
+            executorService.shutdownNow();
+        }
+        spanEvents.clear();
         this.isSending = false;
     }
 
@@ -132,7 +135,7 @@ public class TracingSender {
         if (spanEvent == null) {
             return;
         }
-        boolean isSuccessful = SPAN_EVENT_DATA_QUEUE.offer(spanEvent);
+        boolean isSuccessful = spanEvents.offer(spanEvent);
         if (!isSuccessful) {
             LOGGER.warning("Failed to offer spanEvent.");
         }
@@ -166,7 +169,7 @@ public class TracingSender {
         }
 
         private Optional<TracingMessage> buildTracingMessage() {
-            SpanEvent spanEvent = SPAN_EVENT_DATA_QUEUE.poll();
+            SpanEvent spanEvent = spanEvents.poll();
             if (spanEvent == null) {
                 return Optional.empty();
             }

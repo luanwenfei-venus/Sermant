@@ -68,7 +68,7 @@ public class InjectServiceImpl implements ClassInjectService {
                     className, factoryName));
             return;
         }
-        defineInjectClasses(className, classLoader);
+//        defineInjectClasses(className, classLoader);
         final ClassInjectDefine[] requiredDefines = classInjectDefine.requiredDefines();
         if (requiredDefines != null) {
             for (ClassInjectDefine define : requiredDefines) {
@@ -89,17 +89,17 @@ public class InjectServiceImpl implements ClassInjectService {
         }
     }
 
-    private void defineInjectClasses(String className, ClassLoader classLoader) {
-        final Set<String> injectClasses = defineClassCache.getOrDefault(classLoader, new HashSet<>());
-        if (injectClasses.contains(className)) {
-            return;
-        }
-        injectClasses.add(className);
-        defineClassCache.put(classLoader, injectClasses);
-        ClassUtils.defineClass(className, classLoader);
-        LOGGER.fine(String.format(Locale.ENGLISH, "Defines class [%s] for classLoader [%s] success!",
-                className, classLoader));
-    }
+//    private void defineInjectClasses(String className, ClassLoader classLoader) {
+//        final Set<String> injectClasses = defineClassCache.getOrDefault(classLoader, new HashSet<>());
+//        if (injectClasses.contains(className)) {
+//            return;
+//        }
+//        injectClasses.add(className);
+//        defineClassCache.put(classLoader, injectClasses);
+////        ClassUtils.defineClass(className, classLoader);
+//        LOGGER.fine(String.format(Locale.ENGLISH, "Defines class [%s] for classLoader [%s] success!",
+//                className, classLoader));
+//    }
 
     @Override
     public void stop() {
